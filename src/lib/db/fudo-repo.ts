@@ -26,11 +26,15 @@ export function getFudoConfig(): FudoConfig {
     return getFudoConfig();
   }
 
+  const envKey = process.env.FUDO_API_KEY?.trim();
+  const envSecret = process.env.FUDO_API_SECRET?.trim();
+  const envBaseUrl = process.env.FUDO_BASE_URL?.trim();
+
   return {
     id: row.id,
-    api_key: row.api_key,
-    api_secret: row.api_secret,
-    base_url: row.base_url,
+    api_key: envKey || row.api_key,
+    api_secret: envSecret || row.api_secret,
+    base_url: envBaseUrl || row.base_url,
     bearer_token: row.bearer_token,
     token_expires_at: row.token_expires_at,
     last_sync_at: row.last_sync_at,

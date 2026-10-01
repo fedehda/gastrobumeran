@@ -18,15 +18,22 @@ import {
   Receipt,
   FileSpreadsheet,
   Brain,
+  RotateCcw,
 } from "lucide-react";
 import { BackofficeAnalytics } from "@/types/loyalty";
 import { RewardsManager } from "@/components/rewards/RewardsManager";
 import { RfmIntelligenceView } from "./RfmIntelligenceView";
+import { TestEnvironmentManager } from "./TestEnvironmentManager";
 
-export function BackofficeDashboard() {
+interface BackofficeDashboardProps {
+  onOpenFudoModal?: () => void;
+  onDataPurged?: () => void;
+}
+
+export function BackofficeDashboard({ onOpenFudoModal, onDataPurged }: BackofficeDashboardProps = {}) {
   const [analytics, setAnalytics] = useState<BackofficeAnalytics | null>(null);
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
-  const [activeTab, setActiveTab] = useState<"analytics" | "rewards" | "rfm">("analytics");
+  const [activeTab, setActiveTab] = useState<"analytics" | "rewards" | "rfm" | "maintenance">("analytics");
   const [isLoading, setIsLoading] = useState(true);
   const [isExecutingCron, setIsExecutingCron] = useState(false);
   const [cronFeedback, setCronFeedback] = useState<string | null>(null);
@@ -229,9 +236,30 @@ export function BackofficeDashboard() {
           <Brain className="w-3.5 h-3.5 text-purple-300" />
           <span>Inteligencia RFM & Pasivo Contable</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("maintenance")}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "maintenance"
+              ? "bg-amber-600 text-white shadow-glow"
+              : "text-gray-400 hover:text-white bg-dark-900 border border-dark-800"
+          }`}
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-amber-300" />
+          <span>Entorno de Prueba & Lanzamiento</span>
+        </button>
       </div>
 
-      {activeTab === "rfm" ? (
+      {activeTab === "maintenance" ? (
+        <TestEnvironmentManager
+          onOpenFudoModal={onOpenFudoModal}
+          onDataPurged={() => {
+            fetchAnalytics(range);
+            if (onDataPurged) onDataPurged();
+          }}
+        />
+      ) : activeTab === "rfm" ? (
         <RfmIntelligenceView />
       ) : activeTab === "rewards" ? (
         <RewardsManager />

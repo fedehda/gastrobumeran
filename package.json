@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "reset-test-data": "tsx src/scripts/reset-test-data.ts"
   },
   "dependencies": {
     "@types/papaparse": "^5.5.2",
