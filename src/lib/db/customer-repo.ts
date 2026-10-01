@@ -125,6 +125,9 @@ export function getCustomerActiveBatches(customerId: string): PointsBatch[] {
   `).all(customerId) as PointsBatch[];
 }
 
+import { parseBirthday, formatBirthdayDisplay, MONTH_NAMES_ES } from "../loyalty/date-utils";
+export { parseBirthday, formatBirthdayDisplay, MONTH_NAMES_ES };
+
 export function checkBirthdayStatus(customer: Customer): BirthdayStatus {
   if (!customer.birth_date) {
     return {
@@ -135,24 +138,8 @@ export function checkBirthdayStatus(customer: Customer): BirthdayStatus {
     };
   }
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-
-  // Check if already claimed this year
-  const alreadyClaimed = customer.last_birthday_reward_year === currentYear;
-
-  // Parse customer birth_date (YYYY-MM-DD)
-  const parts = customer.birth_date.split("-");
-  let month = 0;
-  let day = 0;
-
-  if (parts.length >= 3) {
-    month = parseInt(parts[1], 10) - 1;
-    day = parseInt(parts[2], 10);
-  } else if (parts.length === 2) {
-    month = parseInt(parts[0], 10) - 1;
-    day = parseInt(parts[1], 10);
-  } else {
+  const parsed = parseBirthday(customer.birth_date);
+  if (!parsed) {
     return {
       isEligible: false,
       daysDiff: 999,
@@ -161,8 +148,14 @@ export function checkBirthdayStatus(customer: Customer): BirthdayStatus {
     };
   }
 
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  // Check if already claimed this year
+  const alreadyClaimed = customer.last_birthday_reward_year === currentYear;
+
   // Calculate birthday in current year
-  const thisYearBirthday = new Date(currentYear, month, day);
+  const thisYearBirthday = new Date(currentYear, parsed.month, parsed.day);
 
   // Compare diff in days (ignoring time)
   const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -175,17 +168,18 @@ export function checkBirthdayStatus(customer: Customer): BirthdayStatus {
   const isInWindow = Math.abs(diffDays) <= 3;
   const isEligible = isInWindow && !alreadyClaimed;
 
+  const displayDate = `${parsed.day} de ${MONTH_NAMES_ES[parsed.month]}`;
   let message = "";
   if (alreadyClaimed) {
     message = `Cortesía de cumpleaños ${currentYear} ya entregada.`;
   } else if (diffDays === 0) {
     message = "¡Hoy es su cumpleaños! 🎂 Postre de cortesía de la casa disponible.";
   } else if (diffDays > 0 && diffDays <= 3) {
-    message = `Cumpleaños en ${diffDays} día(s). 🎂 Postre de cortesía de la casa habilitado por semana de agasajo.`;
+    message = `Cumpleaños en ${diffDays} día(s) (${displayDate}). 🎂 Postre de cortesía de la casa habilitado por semana de agasajo.`;
   } else if (diffDays < 0 && diffDays >= -3) {
-    message = `Cumplió hace ${Math.abs(diffDays)} día(s). 🎂 Postre de cortesía de la casa habilitado por semana de agasajo.`;
+    message = `Cumplió hace ${Math.abs(diffDays)} día(s) (${displayDate}). 🎂 Postre de cortesía de la casa habilitado por semana de agasajo.`;
   } else {
-    message = `Cumpleaños: ${day}/${month + 1}. Fuera de ventana de agasajo.`;
+    message = `Cumpleaños: ${displayDate}. Fuera de ventana de agasajo.`;
   }
 
   return {

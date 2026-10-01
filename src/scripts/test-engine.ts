@@ -19,7 +19,7 @@ async function main() {
   const now = new Date();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const dd = String(now.getDate()).padStart(2, "0");
-  const todayBirthday = `1995-${mm}-${dd}`;
+  const todayBirthday = `${mm}-${dd}`; // Sin año (solo Día y Mes)
 
   const testDoc = "88991122";
   let customer = findCustomerByDocument(testDoc);

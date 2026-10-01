@@ -25,7 +25,8 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
   const [name, setName] = useState(!isNumeric ? clean : "");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -39,6 +40,9 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
     setIsSubmitting(true);
     setErrorMsg(null);
 
+    const formattedBirthDate =
+      birthDay && birthMonth ? `${birthMonth}-${birthDay}` : undefined;
+
     try {
       const res = await fetch("/api/customers", {
         method: "POST",
@@ -48,7 +52,7 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
           name: name.trim(),
           phone: phone.trim() || undefined,
           email: email.trim() || undefined,
-          birth_date: birthDate.trim() || undefined,
+          birth_date: formattedBirthDate,
         }),
       });
 
@@ -148,15 +152,49 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
 
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center justify-between">
-              <span>Fecha de Cumpleaños (Opcional)</span>
-              <span className="text-[10px] text-amber-400 font-normal">🎂 Habilita postre de cortesía anual</span>
+              <span>Cumpleaños (Día y Mes - Sin año)</span>
+              <span className="text-[10px] text-amber-400 font-normal">🎂 Cortesía anual</span>
             </label>
-            <input
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              className="w-full px-3.5 py-2 bg-dark-950 border border-dark-750 focus:border-bumeran-500 rounded-xl text-white text-xs focus:outline-none"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={birthDay}
+                onChange={(e) => setBirthDay(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 focus:border-bumeran-500 rounded-xl text-white text-xs focus:outline-none"
+              >
+                <option value="">Día (Opcional)</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={String(d).padStart(2, "0")}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 focus:border-bumeran-500 rounded-xl text-white text-xs focus:outline-none"
+              >
+                <option value="">Mes (Opcional)</option>
+                {[
+                  { val: "01", name: "Enero" },
+                  { val: "02", name: "Febrero" },
+                  { val: "03", name: "Marzo" },
+                  { val: "04", name: "Abril" },
+                  { val: "05", name: "Mayo" },
+                  { val: "06", name: "Junio" },
+                  { val: "07", name: "Julio" },
+                  { val: "08", name: "Agosto" },
+                  { val: "09", name: "Septiembre" },
+                  { val: "10", name: "Octubre" },
+                  { val: "11", name: "Noviembre" },
+                  { val: "12", name: "Diciembre" },
+                ].map((m) => (
+                  <option key={m.val} value={m.val}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-bumeran-500/10 border border-bumeran-500/20 text-bumeran-300 text-[11px]">

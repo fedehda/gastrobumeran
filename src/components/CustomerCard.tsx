@@ -16,6 +16,7 @@ import {
   Gift,
 } from "lucide-react";
 import { Customer, BirthdayStatus } from "@/types/loyalty";
+import { formatBirthdayDisplay } from "@/lib/loyalty/date-utils";
 
 interface CustomerCardProps {
   customer: Customer;
@@ -121,7 +122,7 @@ export function CustomerCard({
               {customer.birth_date && (
                 <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-medium flex items-center">
                   <Cake className="w-3 h-3 mr-1" />
-                  {customer.birth_date}
+                  {formatBirthdayDisplay(customer.birth_date)}
                 </span>
               )}
             </div>
