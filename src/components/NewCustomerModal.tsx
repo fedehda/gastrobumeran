@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserPlus, X, Check, AlertCircle } from "lucide-react";
+import { UserPlus, X, Check, AlertCircle, Zap } from "lucide-react";
 import { Customer } from "@/types/loyalty";
 
 interface NewCustomerModalProps {
@@ -157,6 +157,11 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
               onChange={(e) => setBirthDate(e.target.value)}
               className="w-full px-3.5 py-2 bg-dark-950 border border-dark-750 focus:border-bumeran-500 rounded-xl text-white text-xs focus:outline-none"
             />
+          </div>
+
+          <div className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-bumeran-500/10 border border-bumeran-500/20 text-bumeran-300 text-[11px]">
+            <Zap className="w-3.5 h-3.5 text-bumeran-400 shrink-0" />
+            <span>Sincronización automática activa: el cliente se dará de alta también en Fudo POS</span>
           </div>
 
           {errorMsg && (

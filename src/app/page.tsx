@@ -435,7 +435,8 @@ export default function PosPage() {
         onClose={() => setIsNewCustomerModalOpen(false)}
         initialQuery={newCustomerInitialQuery}
         onCustomerCreated={(newCust) => {
-          showToast(`¡Comensal "${newCust.name}" registrado con éxito!`, "success");
+          const fudoBadge = newCust.fudo_customer_id ? ` (Sincronizado en Fudo ID: ${newCust.fudo_customer_id})` : "";
+          showToast(`¡Comensal "${newCust.name}" registrado con éxito${fudoBadge}!`, "success");
           selectCustomer(newCust);
           refreshData();
         }}

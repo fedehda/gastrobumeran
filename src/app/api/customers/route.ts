@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchCustomers, createCustomer, findCustomerByDocument } from "@/lib/db/customer-repo";
+import { searchCustomers, createCustomer, findCustomerByDocument, linkFudoCustomerId } from "@/lib/db/customer-repo";
+import { FudoApiClient } from "@/lib/fudo/client";
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { document_number, name, phone, email } = body;
+    const { document_number, name, phone, email, birth_date } = body;
 
     if (!document_number || !name) {
       return NextResponse.json(
@@ -44,9 +45,46 @@ export async function POST(req: NextRequest) {
       name,
       phone,
       email,
+      birth_date,
     });
 
-    return NextResponse.json({ success: true, customer: newCustomer, message: "Cliente registrado con éxito." }, { status: 201 });
+    // Sincronización proactiva bidireccional con Fudo POS
+    let fudoSynced = false;
+    let fudoCustomerId: string | null = newCustomer.fudo_customer_id || null;
+
+    try {
+      const fudoClient = new FudoApiClient();
+      if (!fudoCustomerId) {
+        const fudoCust = await fudoClient.createCustomer({
+          name: newCustomer.name,
+          documentNumber: newCustomer.document_number,
+          phone: newCustomer.phone,
+          email: newCustomer.email,
+        });
+
+        if (fudoCust && fudoCust.id) {
+          linkFudoCustomerId(newCustomer.id, fudoCust.id);
+          fudoCustomerId = fudoCust.id;
+          newCustomer.fudo_customer_id = fudoCust.id;
+          fudoSynced = true;
+        }
+      }
+    } catch (fudoErr) {
+      console.warn("Aviso: No se pudo dar de alta al cliente en Fudo POS (el registro local se completó):", fudoErr);
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        customer: newCustomer,
+        fudo_synced: fudoSynced,
+        fudo_customer_id: fudoCustomerId,
+        message: fudoSynced
+          ? `Comensal registrado y sincronizado en Fudo POS (ID: ${fudoCustomerId}).`
+          : "Comensal registrado con éxito en GastroBumeran.",
+      },
+      { status: 201 }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al registrar cliente";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

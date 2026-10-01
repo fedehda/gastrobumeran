@@ -163,7 +163,91 @@ export class FudoApiClient {
     };
   }
 
+  /**
+   * Registers a customer into Fudo POS via API or simulates creation in Sandbox
+   */
+  public async createCustomer(customerData: {
+    name: string;
+    documentNumber?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+  }): Promise<FudoCustomer> {
+    if (this.isSandbox()) {
+      return this.createSandboxCustomer(customerData);
+    }
+
+    const token = await this.authenticate();
+    const url = `${this.config.base_url.replace(/\/+$/, "")}/customers`;
+
+    const payload: Record<string, unknown> = {
+      name: customerData.name.trim(),
+    };
+    if (customerData.documentNumber) {
+      payload.fiscalNumber = customerData.documentNumber.trim();
+      payload.cuit = customerData.documentNumber.trim();
+      payload.dni = customerData.documentNumber.trim();
+    }
+    if (customerData.phone) {
+      payload.phone = customerData.phone.trim();
+    }
+    if (customerData.email) {
+      payload.email = customerData.email.trim();
+    }
+    if (customerData.address) {
+      payload.address = customerData.address.trim();
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Error al dar de alta cliente en Fudo (${response.status}): ${err}`);
+    }
+
+    const json = await response.json();
+    const data = json.data || json;
+
+    return {
+      id: String(data.id),
+      name: String(data.name || customerData.name),
+      fiscalNumber:
+        data.fiscalNumber || data.cuit || data.dni
+          ? String(data.fiscalNumber || data.cuit || data.dni)
+          : customerData.documentNumber || null,
+      phone: data.phone ? String(data.phone) : customerData.phone || null,
+      email: data.email ? String(data.email) : customerData.email || null,
+    };
+  }
+
   // --- Sandbox Simulator Helpers ---
+
+  private createSandboxCustomer(customerData: {
+    name: string;
+    documentNumber?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  }): FudoCustomer {
+    const randomSuffix = Math.floor(100 + Math.random() * 900);
+    const mockId = `FUDO-CUST-${randomSuffix}`;
+
+    return {
+      id: mockId,
+      name: customerData.name.trim(),
+      fiscalNumber:
+        customerData.documentNumber?.trim() ||
+        `30${Math.floor(1000000 + Math.random() * 8999999)}`,
+      phone: customerData.phone?.trim() || null,
+      email: customerData.email?.trim() || null,
+    };
+  }
 
   private getSandboxSales(fromIso?: string): FudoSale[] {
     const now = Date.now();
