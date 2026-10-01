@@ -208,6 +208,7 @@ export class FudoApiClient {
     phone?: string | null;
     email?: string | null;
     address?: string | null;
+    birthDate?: string | null;
   }): Promise<FudoCustomer> {
     if (this.isSandbox()) {
       return this.createSandboxCustomer(customerData);
@@ -218,27 +219,42 @@ export class FudoApiClient {
     const url = `${baseUrl}/customers`;
 
     const attributes: Record<string, unknown> = {
-      name: customerData.name.trim(),
+      name: customerData.name.trim().slice(0, 90),
+      active: true,
     };
-    if (customerData.documentNumber) {
-      attributes.fiscalNumber = customerData.documentNumber.trim();
-      attributes.cuit = customerData.documentNumber.trim();
-      attributes.dni = customerData.documentNumber.trim();
+
+    if (customerData.documentNumber?.trim()) {
+      attributes.vatNumber = customerData.documentNumber.trim().slice(0, 45);
     }
-    if (customerData.phone) {
-      attributes.phone = customerData.phone.trim();
+
+    if (customerData.phone?.trim()) {
+      attributes.phone = customerData.phone.trim().slice(0, 45);
     }
-    if (customerData.email) {
-      attributes.email = customerData.email.trim();
+
+    if (customerData.email?.trim()) {
+      const emailTrim = customerData.email.trim().slice(0, 90);
+      if (emailTrim.includes("@") && emailTrim.includes(".")) {
+        attributes.email = emailTrim;
+      }
     }
-    if (customerData.address) {
+
+    if (customerData.address?.trim()) {
       attributes.address = customerData.address.trim();
     }
 
-    // Try standard JSON:API payload first
+    if (customerData.birthDate?.trim()) {
+      const bday = customerData.birthDate.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(bday)) {
+        attributes.birthDate = bday;
+      } else if (/^\d{2}-\d{2}$/.test(bday)) {
+        attributes.birthDate = `2000-${bday}`;
+      }
+    }
+
+    // Standard JSON:API payload compliant with official Fudo OpenAPI spec (type: "Customer")
     const jsonApiPayload = {
       data: {
-        type: "customers",
+        type: "Customer",
         attributes,
       },
     };
@@ -254,31 +270,38 @@ export class FudoApiClient {
     });
 
     if (!response.ok) {
-      // Fallback to flat payload if JSON:API was not expected by Fudo endpoint
-      const flatPayload = {
-        name: customerData.name.trim(),
-        fiscalNumber: customerData.documentNumber?.trim() || undefined,
-        cuit: customerData.documentNumber?.trim() || undefined,
-        dni: customerData.documentNumber?.trim() || undefined,
-        phone: customerData.phone?.trim() || undefined,
-        email: customerData.email?.trim() || undefined,
-        address: customerData.address?.trim() || undefined,
-      };
+      const err = await response.text();
+      // If optional attribute was rejected, retry with minimal core fields (name, active, phone, email)
+      if (response.status === 400 && (attributes.vatNumber || attributes.birthDate || attributes.address)) {
+        const minimalAttributes: Record<string, unknown> = {
+          name: attributes.name,
+          active: true,
+        };
+        if (attributes.phone) minimalAttributes.phone = attributes.phone;
+        if (attributes.email) minimalAttributes.email = attributes.email;
 
-      const fallbackRes = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(flatPayload),
-      });
+        const retryRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            data: {
+              type: "Customer",
+              attributes: minimalAttributes,
+            },
+          }),
+        });
 
-      if (fallbackRes.ok) {
-        response = fallbackRes;
+        if (retryRes.ok) {
+          response = retryRes;
+        } else {
+          const retryErr = await retryRes.text();
+          throw new Error(`Error al dar de alta cliente en Fudo (${retryRes.status}): ${retryErr}`);
+        }
       } else {
-        const err = await response.text();
         throw new Error(`Error al dar de alta cliente en Fudo (${response.status}): ${err}`);
       }
     }
@@ -291,8 +314,8 @@ export class FudoApiClient {
       id: String(data.id),
       name: String(attrs.name || customerData.name),
       fiscalNumber:
-        attrs.fiscalNumber || attrs.cuit || attrs.dni
-          ? String(attrs.fiscalNumber || attrs.cuit || attrs.dni)
+        attrs.vatNumber || attrs.fiscalNumber || attrs.cuit || attrs.dni
+          ? String(attrs.vatNumber || attrs.fiscalNumber || attrs.cuit || attrs.dni)
           : customerData.documentNumber || null,
       phone: attrs.phone ? String(attrs.phone) : customerData.phone || null,
       email: attrs.email ? String(attrs.email) : customerData.email || null,

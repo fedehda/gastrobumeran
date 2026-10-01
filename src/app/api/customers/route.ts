@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
           documentNumber: newCustomer.document_number,
           phone: newCustomer.phone,
           email: newCustomer.email,
+          birthDate: newCustomer.birth_date,
         });
 
         if (fudoCust && fudoCust.id) {
