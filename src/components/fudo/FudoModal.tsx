@@ -320,15 +320,24 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
 
                     {/* Base URL */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
-                        Base URL del Endpoint
-                      </label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-medium text-gray-300">
+                          Base URL de la API REST Fudo
+                        </label>
+                        <span className="text-[10px] text-gray-500 font-mono">
+                          Auth: https://auth.fu.do/api
+                        </span>
+                      </div>
                       <input
                         type="text"
                         value={baseUrl}
                         onChange={(e) => setBaseUrl(e.target.value)}
+                        placeholder="https://api.fu.do/v1alpha1"
                         className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-sky-500 font-mono text-xs"
                       />
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        Endpoint oficial de datos: <code className="text-gray-400">https://api.fu.do/v1alpha1</code>. La autenticación se realiza de forma automática contra <code className="text-gray-400">https://auth.fu.do/api</code>.
+                      </p>
                     </div>
 
                     {/* Sync interval & Auto Sync */}

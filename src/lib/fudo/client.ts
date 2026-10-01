@@ -20,6 +20,21 @@ export class FudoApiClient {
     );
   }
 
+  public getAuthUrl(): string {
+    const envAuth = process.env.FUDO_AUTH_URL?.trim();
+    if (envAuth) return envAuth;
+    if (this.config.auth_url?.trim()) return this.config.auth_url.trim();
+    return "https://auth.fu.do/api";
+  }
+
+  public getApiBaseUrl(): string {
+    let url = (process.env.FUDO_BASE_URL || this.config.base_url || "https://api.fu.do/v1alpha1").trim().replace(/\/+$/, "");
+    if (url.includes("auth.fu.do")) {
+      url = "https://api.fu.do/v1alpha1";
+    }
+    return url;
+  }
+
   /**
    * Authenticates against Fudo API or Simulates token generation for Sandbox
    */
@@ -42,11 +57,12 @@ export class FudoApiClient {
       return mockToken;
     }
 
-    const authUrl = `${this.config.base_url.replace(/\/+$/, "")}/auth`;
+    const authUrl = this.getAuthUrl();
     const response = await fetch(authUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: JSON.stringify({
         apiKey: this.config.api_key,
@@ -56,7 +72,7 @@ export class FudoApiClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Error de autenticación con Fudo API (${response.status}): ${errorText}`);
+      throw new Error(`Error de autenticación con Fudo API (${response.status} en ${authUrl}): ${errorText}`);
     }
 
     const data = await response.json();
@@ -65,9 +81,15 @@ export class FudoApiClient {
       throw new Error("La respuesta de Fudo API no contiene un token Bearer válido");
     }
 
-    // Default 24 hours expiry
-    const expiresInSec = typeof data.expiresIn === "number" ? data.expiresIn : 86400;
-    const expiresAt = new Date(Date.now() + expiresInSec * 1000).toISOString();
+    let expiresAt: string;
+    if (typeof data.exp === "number") {
+      // Unix timestamp in seconds
+      expiresAt = new Date(data.exp * 1000).toISOString();
+    } else if (typeof data.expiresIn === "number") {
+      expiresAt = new Date(Date.now() + data.expiresIn * 1000).toISOString();
+    } else {
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    }
 
     updateFudoToken(token, expiresAt);
     this.config.bearer_token = token;
@@ -85,7 +107,8 @@ export class FudoApiClient {
     }
 
     const token = await this.authenticate();
-    const url = new URL(`${this.config.base_url.replace(/\/+$/, "")}/sales`);
+    const baseUrl = this.getApiBaseUrl();
+    const url = new URL(`${baseUrl}/sales`);
     url.searchParams.set("status", "CLOSED");
     if (fromIso) {
       url.searchParams.set("from", fromIso);
@@ -99,6 +122,7 @@ export class FudoApiClient {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
     });
 
@@ -110,15 +134,21 @@ export class FudoApiClient {
     const json = await response.json();
     const rawSales = Array.isArray(json) ? json : json.data || json.sales || [];
 
-    // Normalize sales to FudoSale interface
-    return rawSales.map((s: Record<string, unknown>) => ({
-      id: String(s.id),
-      total: Number(s.total || s.totalAmount || s.amount || 0),
-      createdAt: String(s.createdAt || s.date || new Date().toISOString()),
-      status: (s.status as "CLOSED" | "OPEN" | "CANCELED") || "CLOSED",
-      type: (s.type as "TABLE" | "COUNTER" | "DELIVERY") || "TABLE",
-      customerId: s.customerId ? String(s.customerId) : s.customer_id ? String(s.customer_id) : null,
-    }));
+    // Normalize sales to FudoSale interface (supports JSON:API attributes/relationships as well as flat fields)
+    return rawSales.map((s: Record<string, unknown>) => {
+      const attrs = (s.attributes as Record<string, unknown>) || {};
+      const rels = (s.relationships as Record<string, unknown>) || {};
+      const custRel = (rels.customer as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+
+      return {
+        id: String(s.id),
+        total: Number(attrs.total ?? s.total ?? s.totalAmount ?? s.amount ?? 0),
+        createdAt: String(attrs.createdAt || s.createdAt || s.date || new Date().toISOString()),
+        status: ((attrs.status || s.status) as "CLOSED" | "OPEN" | "CANCELED") || "CLOSED",
+        type: ((attrs.type || s.type) as "TABLE" | "COUNTER" | "DELIVERY") || "TABLE",
+        customerId: custRel?.id ? String(custRel.id) : (s.customerId ? String(s.customerId) : s.customer_id ? String(s.customer_id) : null),
+      };
+    });
   }
 
   /**
@@ -132,13 +162,15 @@ export class FudoApiClient {
     }
 
     const token = await this.authenticate();
-    const url = `${this.config.base_url.replace(/\/+$/, "")}/customers/${encodeURIComponent(fudoCustomerId)}`;
+    const baseUrl = this.getApiBaseUrl();
+    const url = `${baseUrl}/customers/${encodeURIComponent(fudoCustomerId)}`;
 
     const response = await fetch(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
     });
 
@@ -152,14 +184,18 @@ export class FudoApiClient {
     }
 
     const json = await response.json();
-    const data = json.data || json;
+    const data = (json.data || json) as Record<string, unknown>;
+    const attrs = (data.attributes as Record<string, unknown>) || data;
 
     return {
       id: String(data.id),
-      name: String(data.name || "Comensal Fudo"),
-      fiscalNumber: data.fiscalNumber || data.cuit || data.dni || data.taxId ? String(data.fiscalNumber || data.cuit || data.dni || data.taxId) : null,
-      phone: data.phone ? String(data.phone) : null,
-      email: data.email ? String(data.email) : null,
+      name: String(attrs.name || "Comensal Fudo"),
+      fiscalNumber:
+        attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId
+          ? String(attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId)
+          : null,
+      phone: attrs.phone ? String(attrs.phone) : null,
+      email: attrs.email ? String(attrs.email) : null,
     };
   }
 
@@ -178,52 +214,88 @@ export class FudoApiClient {
     }
 
     const token = await this.authenticate();
-    const url = `${this.config.base_url.replace(/\/+$/, "")}/customers`;
+    const baseUrl = this.getApiBaseUrl();
+    const url = `${baseUrl}/customers`;
 
-    const payload: Record<string, unknown> = {
+    const attributes: Record<string, unknown> = {
       name: customerData.name.trim(),
     };
     if (customerData.documentNumber) {
-      payload.fiscalNumber = customerData.documentNumber.trim();
-      payload.cuit = customerData.documentNumber.trim();
-      payload.dni = customerData.documentNumber.trim();
+      attributes.fiscalNumber = customerData.documentNumber.trim();
+      attributes.cuit = customerData.documentNumber.trim();
+      attributes.dni = customerData.documentNumber.trim();
     }
     if (customerData.phone) {
-      payload.phone = customerData.phone.trim();
+      attributes.phone = customerData.phone.trim();
     }
     if (customerData.email) {
-      payload.email = customerData.email.trim();
+      attributes.email = customerData.email.trim();
     }
     if (customerData.address) {
-      payload.address = customerData.address.trim();
+      attributes.address = customerData.address.trim();
     }
 
-    const response = await fetch(url, {
+    // Try standard JSON:API payload first
+    const jsonApiPayload = {
+      data: {
+        type: "customers",
+        attributes,
+      },
+    };
+
+    let response = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(jsonApiPayload),
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Error al dar de alta cliente en Fudo (${response.status}): ${err}`);
+      // Fallback to flat payload if JSON:API was not expected by Fudo endpoint
+      const flatPayload = {
+        name: customerData.name.trim(),
+        fiscalNumber: customerData.documentNumber?.trim() || undefined,
+        cuit: customerData.documentNumber?.trim() || undefined,
+        dni: customerData.documentNumber?.trim() || undefined,
+        phone: customerData.phone?.trim() || undefined,
+        email: customerData.email?.trim() || undefined,
+        address: customerData.address?.trim() || undefined,
+      };
+
+      const fallbackRes = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(flatPayload),
+      });
+
+      if (fallbackRes.ok) {
+        response = fallbackRes;
+      } else {
+        const err = await response.text();
+        throw new Error(`Error al dar de alta cliente en Fudo (${response.status}): ${err}`);
+      }
     }
 
     const json = await response.json();
-    const data = json.data || json;
+    const data = (json.data || json) as Record<string, unknown>;
+    const attrs = (data.attributes as Record<string, unknown>) || data;
 
     return {
       id: String(data.id),
-      name: String(data.name || customerData.name),
+      name: String(attrs.name || customerData.name),
       fiscalNumber:
-        data.fiscalNumber || data.cuit || data.dni
-          ? String(data.fiscalNumber || data.cuit || data.dni)
+        attrs.fiscalNumber || attrs.cuit || attrs.dni
+          ? String(attrs.fiscalNumber || attrs.cuit || attrs.dni)
           : customerData.documentNumber || null,
-      phone: data.phone ? String(data.phone) : customerData.phone || null,
-      email: data.email ? String(data.email) : customerData.email || null,
+      phone: attrs.phone ? String(attrs.phone) : customerData.phone || null,
+      email: attrs.email ? String(attrs.email) : customerData.email || null,
     };
   }
 

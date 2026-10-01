@@ -9,6 +9,7 @@ export function getFudoConfig(): FudoConfig {
         api_key: string;
         api_secret: string;
         base_url: string;
+        auth_url?: string | null;
         bearer_token?: string | null;
         token_expires_at?: string | null;
         last_sync_at?: string | null;
@@ -20,8 +21,8 @@ export function getFudoConfig(): FudoConfig {
 
   if (!row) {
     db.prepare(`
-      INSERT INTO fudo_config (api_key, api_secret, base_url, auto_sync_enabled, sync_interval_minutes)
-      VALUES ('DEMO_FUDO_KEY_RESTO99', 'DEMO_FUDO_SECRET_XYZ888', 'https://api.fu.do/v1alpha1', 0, 60)
+      INSERT INTO fudo_config (api_key, api_secret, base_url, auth_url, auto_sync_enabled, sync_interval_minutes)
+      VALUES ('DEMO_FUDO_KEY_RESTO99', 'DEMO_FUDO_SECRET_XYZ888', 'https://api.fu.do/v1alpha1', 'https://auth.fu.do/api', 0, 60)
     `).run();
     return getFudoConfig();
   }
@@ -29,12 +30,14 @@ export function getFudoConfig(): FudoConfig {
   const envKey = process.env.FUDO_API_KEY?.trim();
   const envSecret = process.env.FUDO_API_SECRET?.trim();
   const envBaseUrl = process.env.FUDO_BASE_URL?.trim();
+  const envAuthUrl = process.env.FUDO_AUTH_URL?.trim();
 
   return {
     id: row.id,
     api_key: envKey || row.api_key,
     api_secret: envSecret || row.api_secret,
     base_url: envBaseUrl || row.base_url,
+    auth_url: envAuthUrl || row.auth_url || "https://auth.fu.do/api",
     bearer_token: row.bearer_token,
     token_expires_at: row.token_expires_at,
     last_sync_at: row.last_sync_at,
@@ -48,6 +51,7 @@ export function updateFudoConfig(input: {
   api_key?: string;
   api_secret?: string;
   base_url?: string;
+  auth_url?: string;
   auto_sync_enabled?: boolean;
   sync_interval_minutes?: number;
 }): FudoConfig {
@@ -57,15 +61,16 @@ export function updateFudoConfig(input: {
   const apiKey = input.api_key !== undefined ? input.api_key.trim() : current.api_key;
   const apiSecret = input.api_secret !== undefined ? input.api_secret.trim() : current.api_secret;
   const baseUrl = input.base_url !== undefined ? input.base_url.trim() : current.base_url;
+  const authUrl = input.auth_url !== undefined ? input.auth_url.trim() : (current.auth_url || "https://auth.fu.do/api");
   const autoSync = input.auto_sync_enabled !== undefined ? (input.auto_sync_enabled ? 1 : 0) : current.auto_sync_enabled ? 1 : 0;
   const interval = input.sync_interval_minutes !== undefined ? Math.max(5, input.sync_interval_minutes) : current.sync_interval_minutes;
   const now = new Date().toISOString();
 
   db.prepare(`
     UPDATE fudo_config
-    SET api_key = ?, api_secret = ?, base_url = ?, auto_sync_enabled = ?, sync_interval_minutes = ?, updated_at = ?
+    SET api_key = ?, api_secret = ?, base_url = ?, auth_url = ?, auto_sync_enabled = ?, sync_interval_minutes = ?, updated_at = ?
     WHERE id = ?
-  `).run(apiKey, apiSecret, baseUrl, autoSync, interval, now, current.id);
+  `).run(apiKey, apiSecret, baseUrl, authUrl, autoSync, interval, now, current.id);
 
   return getFudoConfig();
 }

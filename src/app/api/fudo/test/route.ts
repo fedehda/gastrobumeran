@@ -12,6 +12,7 @@ export async function POST(req: Request) {
       api_key: body.api_key !== undefined ? body.api_key : currentConfig.api_key,
       api_secret: body.api_secret !== undefined ? body.api_secret : currentConfig.api_secret,
       base_url: body.base_url !== undefined ? body.base_url : currentConfig.base_url,
+      auth_url: body.auth_url !== undefined ? body.auth_url : currentConfig.auth_url,
     };
 
     const client = new FudoApiClient(configToTest);

@@ -135,6 +135,7 @@ function initDatabase(db: DatabaseSync) {
       api_key TEXT NOT NULL DEFAULT '',
       api_secret TEXT NOT NULL DEFAULT '',
       base_url TEXT NOT NULL DEFAULT 'https://api.fu.do/v1alpha1',
+      auth_url TEXT NOT NULL DEFAULT 'https://auth.fu.do/api',
       bearer_token TEXT,
       token_expires_at TEXT,
       last_sync_at TEXT,
@@ -177,6 +178,7 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "sales", "claimed_at TEXT");
   safeAddColumn(db, "sales", "claimed_by_customer_id TEXT");
   safeAddColumn(db, "loyalty_settings", "points_lifetime_days INTEGER NOT NULL DEFAULT 365");
+  safeAddColumn(db, "fudo_config", "auth_url TEXT NOT NULL DEFAULT 'https://auth.fu.do/api'");
 
   // Seed default settings if none exists
   const settingsCount = (db.prepare("SELECT COUNT(*) as count FROM loyalty_settings").get() as { count: number }).count;
@@ -191,8 +193,8 @@ function initDatabase(db: DatabaseSync) {
   const fudoConfigCount = (db.prepare("SELECT COUNT(*) as count FROM fudo_config").get() as { count: number }).count;
   if (fudoConfigCount === 0) {
     db.prepare(`
-      INSERT INTO fudo_config (api_key, api_secret, base_url, auto_sync_enabled, sync_interval_minutes)
-      VALUES ('DEMO_FUDO_KEY_RESTO99', 'DEMO_FUDO_SECRET_XYZ888', 'https://api.fu.do/v1alpha1', 0, 60)
+      INSERT INTO fudo_config (api_key, api_secret, base_url, auth_url, auto_sync_enabled, sync_interval_minutes)
+      VALUES ('DEMO_FUDO_KEY_RESTO99', 'DEMO_FUDO_SECRET_XYZ888', 'https://api.fu.do/v1alpha1', 'https://auth.fu.do/api', 0, 60)
     `).run();
   }
 

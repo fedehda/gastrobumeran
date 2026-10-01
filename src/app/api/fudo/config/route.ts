@@ -18,6 +18,7 @@ export async function POST(req: Request) {
       api_key: body.api_key,
       api_secret: body.api_secret,
       base_url: body.base_url,
+      auth_url: body.auth_url,
       auto_sync_enabled: body.auto_sync_enabled,
       sync_interval_minutes: body.sync_interval_minutes,
     });

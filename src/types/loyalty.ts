@@ -93,6 +93,7 @@ export interface FudoConfig {
   api_key: string;
   api_secret: string;
   base_url: string;
+  auth_url?: string;
   bearer_token?: string | null;
   token_expires_at?: string | null;
   last_sync_at?: string | null;
