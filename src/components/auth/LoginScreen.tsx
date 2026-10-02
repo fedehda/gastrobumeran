@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Utensils, KeyRound, Mail, ShieldCheck, Eye, EyeOff, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Utensils, KeyRound, Mail, ShieldCheck, Eye, EyeOff, Sparkles, AlertCircle, ArrowRight, Keyboard } from "lucide-react";
 import { AdminUser } from "@/types/loyalty";
 
 interface LoginScreenProps {
@@ -16,50 +16,138 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
-  const handlePinDigit = (digit: string) => {
-    if (pin.length < 6) {
-      const next = pin + digit;
-      setPin(next);
-      if (next.length === 4) {
-        // Auto-submit on 4 digits
-        submitLogin({ pin: next });
+  const isLoadingRef = useRef(isLoading);
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  const triggerKeyFeedback = (key: string) => {
+    setActiveKey(key);
+    setTimeout(() => {
+      setActiveKey((curr) => (curr === key ? null : curr));
+    }, 150);
+  };
+
+  const submitLogin = useCallback(
+    async (credentials: { email?: string; password?: string; pin?: string }) => {
+      setIsLoading(true);
+      setErrorMsg(null);
+
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(credentials),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Credenciales inválidas");
+        }
+
+        onLoginSuccess(data.user);
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : "Error al iniciar sesión");
+        setPin("");
+      } finally {
+        setIsLoading(false);
       }
-    }
-  };
+    },
+    [onLoginSuccess]
+  );
 
-  const handlePinDelete = () => {
-    setPin((prev) => prev.slice(0, -1));
-  };
-
-  const handlePinClear = () => {
-    setPin("");
-  };
-
-  const submitLogin = async (credentials: { email?: string; password?: string; pin?: string }) => {
-    setIsLoading(true);
-    setErrorMsg(null);
-
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
+  const handlePinDigit = useCallback(
+    (digit: string) => {
+      if (isLoadingRef.current) return;
+      setErrorMsg(null);
+      triggerKeyFeedback(digit);
+      setPin((prev) => {
+        if (prev.length >= 4) return prev;
+        const next = prev + digit;
+        if (next.length === 4) {
+          // Auto-submit on 4 digits
+          submitLogin({ pin: next });
+        }
+        return next;
       });
+    },
+    [submitLogin]
+  );
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Credenciales inválidas");
+  const handlePinDelete = useCallback(() => {
+    if (isLoadingRef.current) return;
+    triggerKeyFeedback("⌫");
+    setPin((prev) => prev.slice(0, -1));
+  }, []);
+
+  const handlePinClear = useCallback(() => {
+    if (isLoadingRef.current) return;
+    triggerKeyFeedback("C");
+    setPin("");
+  }, []);
+
+  // Keyboard listener for physical keyboard & numpad input
+  useEffect(() => {
+    if (authMode !== "pin") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input or textarea
+      const target = e.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === "input" || tagName === "textarea") {
+        return;
       }
 
-      onLoginSuccess(data.user);
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Error al iniciar sesión");
-      setPin("");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      if (isLoadingRef.current) return;
+
+      // Digits 0-9 (top row or numpad)
+      let digit: string | null = null;
+      if (/^[0-9]$/.test(e.key)) {
+        digit = e.key;
+      } else if (e.code && /^Numpad[0-9]$/.test(e.code)) {
+        digit = e.code.replace("Numpad", "");
+      }
+
+      if (digit !== null) {
+        e.preventDefault();
+        handlePinDigit(digit);
+        return;
+      }
+
+      // Backspace
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        handlePinDelete();
+        return;
+      }
+
+      // Clear (Delete, Escape or 'c' / 'C')
+      if (e.key === "Delete" || e.key === "Escape" || e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        handlePinClear();
+        return;
+      }
+
+      // Enter
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setPin((current) => {
+          if (current.length === 4) {
+            submitLogin({ pin: current });
+          }
+          return current;
+        });
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [authMode, handlePinDigit, handlePinDelete, handlePinClear, submitLogin]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,25 +251,36 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
             {/* Numeric Keypad */}
             <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto">
-              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"].map((btn) => (
-                <button
-                  key={btn}
-                  type="button"
-                  onClick={() => {
-                    if (btn === "C") handlePinClear();
-                    else if (btn === "⌫") handlePinDelete();
-                    else handlePinDigit(btn);
-                  }}
-                  disabled={isLoading}
-                  className={`h-14 rounded-2xl text-lg font-bold transition-all flex items-center justify-center active:scale-95 disabled:opacity-50 ${
-                    btn === "C" || btn === "⌫"
-                      ? "bg-dark-800/80 hover:bg-dark-750 text-gray-400 text-sm font-semibold"
-                      : "bg-dark-800 hover:bg-dark-750 text-white border border-dark-700/60 shadow-sm"
-                  }`}
-                >
-                  {btn}
-                </button>
-              ))}
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"].map((btn) => {
+                const isFeedbackActive = activeKey === btn;
+                return (
+                  <button
+                    key={btn}
+                    type="button"
+                    onClick={() => {
+                      if (btn === "C") handlePinClear();
+                      else if (btn === "⌫") handlePinDelete();
+                      else handlePinDigit(btn);
+                    }}
+                    disabled={isLoading}
+                    className={`h-14 rounded-2xl text-lg font-bold transition-all flex items-center justify-center active:scale-95 disabled:opacity-50 ${
+                      isFeedbackActive
+                        ? "ring-2 ring-bumeran-500 bg-bumeran-500/20 text-bumeran-400 scale-95 shadow-glow"
+                        : btn === "C" || btn === "⌫"
+                        ? "bg-dark-800/80 hover:bg-dark-750 text-gray-400 text-sm font-semibold"
+                        : "bg-dark-800 hover:bg-dark-750 text-white border border-dark-700/60 shadow-sm"
+                    }`}
+                  >
+                    {btn}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Keyboard Hint */}
+            <div className="flex items-center justify-center space-x-1.5 text-[11px] text-gray-500 pt-1">
+              <Keyboard className="w-3.5 h-3.5 text-gray-400" />
+              <span>Puedes usar los números de tu teclado físico o numpad</span>
             </div>
           </div>
         )}
