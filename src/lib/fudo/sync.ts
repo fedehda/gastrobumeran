@@ -7,7 +7,7 @@ import {
   createCustomer,
   linkFudoCustomerId,
 } from "@/lib/db/customer-repo";
-import { processSale } from "@/lib/loyalty/engine";
+import { processSale, cancelSale } from "@/lib/loyalty/engine";
 import { FudoApiClient } from "./client";
 import { FudoSyncResult, Customer } from "@/types/loyalty";
 
@@ -92,6 +92,7 @@ export async function syncFudoSales(options?: SyncOptions): Promise<FudoSyncResu
   const errors: string[] = [];
   let syncedCount = 0;
   let duplicatedCount = 0;
+  let canceledCount = 0;
   let unassignedCount = 0;
   let newCustomersCount = 0;
   let totalPointsEarned = 0;
@@ -122,6 +123,7 @@ export async function syncFudoSales(options?: SyncOptions): Promise<FudoSyncResu
       totalRetrieved: 0,
       syncedCount: 0,
       duplicatedCount: 0,
+      canceledCount: 0,
       unassignedCount: 0,
       newCustomersCount: importedCustomersCount,
       importedCustomersCount,
@@ -136,8 +138,20 @@ export async function syncFudoSales(options?: SyncOptions): Promise<FudoSyncResu
   // 3. Process each sale
   for (const sale of fudoSales) {
     try {
-      // 1. Check idempotency on external_sale_id
-      const existing = db.prepare("SELECT id FROM sales WHERE external_sale_id = ?").get(sale.id);
+      // 1. Check idempotency and cancellation on external_sale_id
+      const existing = db
+        .prepare("SELECT id, status FROM sales WHERE external_sale_id = ?")
+        .get(sale.id) as { id: string; status: string } | undefined;
+
+      // Si la venta está cancelada o anulada en Fudo
+      if (sale.status === "CANCELED") {
+        if (existing && existing.status !== "CANCELED") {
+          cancelSale(existing.id, "Anulación sincronizada desde Fudo POS");
+          canceledCount++;
+        }
+        continue;
+      }
+
       if (existing) {
         duplicatedCount++;
         continue;
@@ -250,6 +264,7 @@ export async function syncFudoSales(options?: SyncOptions): Promise<FudoSyncResu
     totalRetrieved: fudoSales.length,
     syncedCount,
     duplicatedCount,
+    canceledCount,
     unassignedCount,
     newCustomersCount: newCustomersCount + importedCustomersCount,
     importedCustomersCount,

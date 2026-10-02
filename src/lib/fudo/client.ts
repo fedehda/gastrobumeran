@@ -110,8 +110,8 @@ export class FudoApiClient {
     const baseUrl = this.getApiBaseUrl();
     const url = new URL(`${baseUrl}/sales`);
 
-    // 1. Strict OpenAPI filter: filter[saleState]=in.(CLOSED)
-    url.searchParams.set("filter[saleState]", "in.(CLOSED)");
+    // 1. Strict OpenAPI filter: filter[saleState]=in.(CLOSED,CANCELED)
+    url.searchParams.set("filter[saleState]", "in.(CLOSED,CANCELED)");
 
     // 2. Strict OpenAPI sort: newest sales first
     url.searchParams.set("sort", "-createdAt");

@@ -5,6 +5,7 @@ import {
   Customer,
   LoyaltyTransactionResult,
   RedemptionResult,
+  CancelSaleResult,
   SaleSource,
   PointsHistory,
   Sale,
@@ -136,8 +137,8 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   try {
     // Insert Sale
     db.prepare(`
-      INSERT INTO sales (id, external_sale_id, customer_id, source, total_amount, sale_date, status, import_batch_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'CLOSED', ?, ?)
+      INSERT INTO sales (id, external_sale_id, customer_id, source, total_amount, sale_date, status, visit_added, import_batch_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'CLOSED', ?, ?, ?)
     `).run(
       saleId,
       input.externalSaleId || null,
@@ -145,6 +146,7 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       source,
       input.totalAmount,
       saleDateStr,
+      visitAdded ? 1 : 0,
       input.importBatchId || null,
       nowStr
     );
@@ -530,4 +532,137 @@ export function runExpirationAudit(): {
     totalPointsExpired: inactivityPointsExpired + batchesPointsExpired,
     day75Alerts,
   };
+}
+
+/**
+ * Anula una venta previamente procesada de forma atómica:
+ * - Cambia estado de venta a 'CANCELED'
+ * - Extingue lote FIFO generado
+ * - Descuenta puntos acreditados y registra asiento contable negativo
+ * - Si sumó visita, decrementa visit_count y restaura last_visit_at previa
+ * - Descuenta total_spent
+ */
+export function cancelSale(saleId: string, reason = "Anulación manual"): CancelSaleResult {
+  const db = getDatabase();
+  const sale = db.prepare("SELECT * FROM sales WHERE id = ?").get(saleId) as
+    | (Sale & { visit_added?: number })
+    | undefined;
+
+  if (!sale) {
+    throw new Error(`La venta con ID ${saleId} no existe.`);
+  }
+
+  if (sale.status === "CANCELED") {
+    throw new Error(`La venta #${sale.id.slice(0, 8)} ya se encuentra anulada.`);
+  }
+
+  const nowStr = new Date().toISOString();
+
+  // Si la venta no tenía cliente asignado
+  if (!sale.customer_id) {
+    db.prepare("UPDATE sales SET status = 'CANCELED' WHERE id = ?").run(saleId);
+    return {
+      success: true,
+      sale: { ...sale, status: "CANCELED" },
+      customer: null,
+      points_deducted: 0,
+      visit_deducted: false,
+      message: `Venta no asignada #${sale.id.slice(0, 8)} anulada correctamente.`,
+    };
+  }
+
+  const customer = findCustomerById(sale.customer_id);
+  if (!customer) {
+    throw new Error("Cliente asociado a la venta no encontrado.");
+  }
+
+  // Puntos ganados en esta venta
+  const pointsHistoryEntry = db
+    .prepare("SELECT * FROM points_history WHERE sale_id = ? AND points > 0 ORDER BY created_at DESC LIMIT 1")
+    .get(saleId) as PointsHistory | undefined;
+  const pointsEarned = pointsHistoryEntry ? pointsHistoryEntry.points : 0;
+
+  // Determinar si computó visita
+  const didAddVisit = Boolean(sale.visit_added);
+
+  db.exec("BEGIN");
+  try {
+    // 1. Cambiar estado a CANCELED
+    db.prepare("UPDATE sales SET status = 'CANCELED' WHERE id = ?").run(saleId);
+
+    // 2. Extinguir lote FIFO de esta venta
+    db.prepare(`
+      UPDATE points_batches
+      SET status = 'DEPLETED', points_remaining = 0
+      WHERE sale_id = ?
+    `).run(saleId);
+
+    // 3. Registrar contrapartida negativa en bitácora de puntos
+    if (pointsEarned > 0) {
+      const historyId = crypto.randomUUID();
+      db.prepare(`
+        INSERT INTO points_history (id, customer_id, sale_id, points, concept, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        historyId,
+        customer.id,
+        saleId,
+        -pointsEarned,
+        `Anulación Venta #${sale.id.slice(0, 8)} (${reason})`,
+        nowStr
+      );
+    }
+
+    // 4. Actualizar comensal (puntos, gasto acumulado, visitas)
+    const newPointsBalance = Math.max(0, customer.points_balance - pointsEarned);
+    const newTotalSpent = Math.max(0, customer.total_spent - sale.total_amount);
+    const newVisitCount = didAddVisit ? Math.max(0, customer.visit_count - 1) : customer.visit_count;
+
+    // Restaurar last_visit_at a la visita previa válida si correspondía
+    let newLastVisitAt = customer.last_visit_at;
+    if (didAddVisit) {
+      const prevVisitSale = db
+        .prepare(`
+          SELECT sale_date FROM sales
+          WHERE customer_id = ? AND id != ? AND status = 'CLOSED' AND visit_added = 1
+          ORDER BY sale_date DESC LIMIT 1
+        `)
+        .get(customer.id, saleId) as { sale_date: string } | undefined;
+      newLastVisitAt = prevVisitSale ? prevVisitSale.sale_date : null;
+    }
+
+    db.prepare(`
+      UPDATE customers
+      SET points_balance = ?,
+          total_spent = ?,
+          visit_count = ?,
+          last_visit_at = ?
+      WHERE id = ?
+    `).run(
+      newPointsBalance,
+      newTotalSpent,
+      newVisitCount,
+      newLastVisitAt,
+      customer.id
+    );
+
+    db.exec("COMMIT");
+
+    const updatedCustomer = findCustomerById(customer.id)!;
+    const updatedSale = db.prepare("SELECT * FROM sales WHERE id = ?").get(saleId) as Sale;
+
+    return {
+      success: true,
+      sale: updatedSale,
+      customer: updatedCustomer,
+      points_deducted: pointsEarned,
+      visit_deducted: didAddVisit,
+      message: `Venta #${sale.id.slice(0, 8)} anulada exitosamente. Se descontaron ${pointsEarned} puntos${
+        didAddVisit ? " y 1 visita" : ""
+      }.`,
+    };
+  } catch (err: unknown) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
 }

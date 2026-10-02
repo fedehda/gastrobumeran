@@ -63,6 +63,7 @@ function initDatabase(db: DatabaseSync) {
       total_amount REAL NOT NULL,
       sale_date TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'CLOSED',
+      visit_added INTEGER NOT NULL DEFAULT 0,
       import_batch_id TEXT,
       claimed_at TEXT,
       claimed_by_customer_id TEXT,
@@ -180,6 +181,7 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "customers", "fudo_customer_id TEXT");
   safeAddColumn(db, "sales", "claimed_at TEXT");
   safeAddColumn(db, "sales", "claimed_by_customer_id TEXT");
+  safeAddColumn(db, "sales", "visit_added INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "loyalty_settings", "points_lifetime_days INTEGER NOT NULL DEFAULT 365");
   safeAddColumn(db, "loyalty_settings", "allow_visit_table INTEGER NOT NULL DEFAULT 1");
   safeAddColumn(db, "loyalty_settings", "allow_visit_counter INTEGER NOT NULL DEFAULT 0");

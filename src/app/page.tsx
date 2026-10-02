@@ -13,6 +13,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { ExpirationAuditModal } from "@/components/ExpirationAuditModal";
 import { CsvWizardModal } from "@/components/csv/CsvWizardModal";
 import { FudoModal } from "@/components/fudo/FudoModal";
+import { VoidSaleModal } from "@/components/sales/VoidSaleModal";
 import { BackofficeDashboard } from "@/components/analytics/BackofficeDashboard";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { Customer, LoyaltySettings, LoyaltyReward, PointsHistory, Sale, BirthdayStatus, AdminUser } from "@/types/loyalty";
@@ -72,6 +73,7 @@ export default function PosPage() {
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isCsvWizardOpen, setIsCsvWizardOpen] = useState(false);
   const [isFudoModalOpen, setIsFudoModalOpen] = useState(false);
+  const [isVoidModalOpen, setIsVoidModalOpen] = useState(false);
 
   // Toast / feedback alert
   const [toast, setToast] = useState<{ type: "success" | "info"; message: string } | null>(null);
@@ -132,9 +134,13 @@ export default function PosPage() {
           if (syncRes.ok) {
             const syncData = await syncRes.json();
             if (syncData.success && syncData.result) {
-              const { syncedCount, newCustomersCount } = syncData.result;
-              if (syncedCount > 0 || newCustomersCount > 0) {
-                fudoNotice = ` • Fudo: +${syncedCount} ventas, +${newCustomersCount} clientes`;
+              const { syncedCount, newCustomersCount, canceledCount } = syncData.result;
+              const notices: string[] = [];
+              if (syncedCount > 0) notices.push(`+${syncedCount} ventas`);
+              if (newCustomersCount > 0) notices.push(`+${newCustomersCount} clientes`);
+              if (canceledCount && canceledCount > 0) notices.push(`-${canceledCount} anuladas`);
+              if (notices.length > 0) {
+                fudoNotice = ` • Fudo: ${notices.join(", ")}`;
               }
             }
           }
@@ -306,6 +312,7 @@ export default function PosPage() {
         onOpenAudit={() => setIsAuditModalOpen(true)}
         onOpenCsvWizard={() => setIsCsvWizardOpen(true)}
         onOpenFudo={() => setIsFudoModalOpen(true)}
+        onOpenVoidSale={() => setIsVoidModalOpen(true)}
         onRefreshMetrics={() => refreshData({ syncFudo: true, showFeedback: true })}
         isRefreshing={isRefreshing}
       />
@@ -375,6 +382,11 @@ export default function PosPage() {
                 <CustomerHistory
                   pointsHistory={customerDetail.pointsHistory}
                   sales={customerDetail.sales}
+                  onSaleCanceled={(updatedCustomer, message) => {
+                    showToast(message, "info");
+                    selectCustomer(updatedCustomer);
+                    refreshData();
+                  }}
                 />
               </div>
 
@@ -521,6 +533,19 @@ export default function PosPage() {
         onSyncCompleted={() => {
           refreshData();
           showToast("¡Sincronización con API Fudo completada!", "success");
+        }}
+      />
+
+      {/* Void Sale Modal */}
+      <VoidSaleModal
+        isOpen={isVoidModalOpen}
+        onClose={() => setIsVoidModalOpen(false)}
+        onSaleCanceled={(updatedCust, msg) => {
+          if (msg) showToast(msg, "info");
+          if (customerDetail && updatedCust && customerDetail.customer.id === updatedCust.id) {
+            selectCustomer(updatedCust);
+          }
+          refreshData();
         }}
       />
     </div>

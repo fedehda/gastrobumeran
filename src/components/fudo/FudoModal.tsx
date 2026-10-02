@@ -17,6 +17,7 @@ import {
   Receipt,
   Sparkles,
   Info,
+  Ban,
 } from "lucide-react";
 import { FudoConfig, FudoSyncResult } from "@/types/loyalty";
 
@@ -571,7 +572,28 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                       </div>
                       <div className="text-[11px] text-gray-400">Facturación Total</div>
                     </div>
+
+                    {syncResult.canceledCount !== undefined && syncResult.canceledCount > 0 && (
+                      <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-center col-span-2 sm:col-span-1 animate-fade-in">
+                        <div className="flex items-center justify-center text-red-400 mb-1">
+                          <Ban className="w-4 h-4" />
+                        </div>
+                        <div className="text-base font-bold text-red-400">
+                          {syncResult.canceledCount}
+                        </div>
+                        <div className="text-[11px] text-gray-400">Ventas Anuladas</div>
+                      </div>
+                    )}
                   </div>
+
+                  {syncResult.canceledCount !== undefined && syncResult.canceledCount > 0 && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-start space-x-2">
+                      <Ban className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Anulaciones detectadas ({syncResult.canceledCount} venta(s)):</strong> Se detectaron ventas canceladas en Fudo. Se revirtieron atómicamente los puntos acumulados y las visitas en las cuentas de los comensales correspondientes.
+                      </span>
+                    </div>
+                  )}
 
                   {syncResult.unassignedCount > 0 && (
                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300 flex items-start space-x-2">

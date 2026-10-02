@@ -27,6 +27,7 @@ export interface Sale {
   total_amount: number;
   sale_date: string;
   status: string;
+  visit_added?: boolean;
   import_batch_id?: string | null;
   claimed_at?: string | null;
   claimed_by_customer_id?: string | null;
@@ -131,6 +132,7 @@ export interface FudoSyncResult {
   totalRetrieved: number;
   syncedCount: number;
   duplicatedCount: number;
+  canceledCount?: number;
   unassignedCount: number;
   newCustomersCount: number;
   importedCustomersCount?: number;
@@ -151,6 +153,15 @@ export interface LoyaltyTransactionResult {
   batch_expires_at?: string;
   points_history_entry: PointsHistory;
   message?: string;
+}
+
+export interface CancelSaleResult {
+  success: boolean;
+  sale: Sale;
+  customer?: Customer | null;
+  points_deducted: number;
+  visit_deducted: boolean;
+  message: string;
 }
 
 export interface RedemptionResult {

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Utensils, RefreshCw, Sliders, Flame, FileSpreadsheet, Zap, BarChart3, LogOut, QrCode } from "lucide-react";
+import { Utensils, RefreshCw, Sliders, Flame, FileSpreadsheet, Zap, BarChart3, LogOut, QrCode, Ban } from "lucide-react";
 import { AdminUser } from "@/types/loyalty";
 
 interface NavbarProps {
@@ -13,6 +13,7 @@ interface NavbarProps {
   onOpenAudit: () => void;
   onOpenCsvWizard: () => void;
   onOpenFudo: () => void;
+  onOpenVoidSale?: () => void;
   onRefreshMetrics: () => void;
   isRefreshing?: boolean;
 }
@@ -26,6 +27,7 @@ export function Navbar({
   onOpenAudit,
   onOpenCsvWizard,
   onOpenFudo,
+  onOpenVoidSale,
   onRefreshMetrics,
   isRefreshing,
 }: NavbarProps) {
@@ -127,6 +129,18 @@ export function Navbar({
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Importar CSV</span>
           </button>
+
+          {/* Void Sale / Anular Venta Button */}
+          {onOpenVoidSale && (
+            <button
+              onClick={onOpenVoidSale}
+              title="Buscar tickets y anular ventas manualmente"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-dark-900 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 text-xs font-bold transition-all shadow-glow"
+            >
+              <Ban className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Anular Venta</span>
+            </button>
+          )}
 
           {/* 90-Day Audit Button */}
           <button

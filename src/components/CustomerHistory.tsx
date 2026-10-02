@@ -1,16 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import { History, Receipt, Award, ArrowUpRight, ArrowDownRight, Clock } from "lucide-react";
-import { PointsHistory, Sale } from "@/types/loyalty";
+import { History, Receipt, Award, ArrowUpRight, ArrowDownRight, Clock, Ban, AlertTriangle, RefreshCw, X } from "lucide-react";
+import { PointsHistory, Sale, Customer } from "@/types/loyalty";
 
 interface CustomerHistoryProps {
   pointsHistory: PointsHistory[];
   sales: Sale[];
+  onSaleCanceled?: (updatedCustomer: Customer, message: string) => void;
 }
 
-export function CustomerHistory({ pointsHistory, sales }: CustomerHistoryProps) {
+export function CustomerHistory({ pointsHistory, sales, onSaleCanceled }: CustomerHistoryProps) {
   const [activeTab, setActiveTab] = useState<"points" | "sales">("points");
+  const [saleToVoid, setSaleToVoid] = useState<Sale | null>(null);
+  const [voidReason, setVoidReason] = useState("Anulación manual en caja");
+  const [isVoiding, setIsVoiding] = useState(false);
+  const [voidError, setVoidError] = useState<string | null>(null);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -26,8 +31,37 @@ export function CustomerHistory({ pointsHistory, sales }: CustomerHistoryProps) 
     }
   };
 
+  const handleConfirmVoid = async () => {
+    if (!saleToVoid) return;
+    setIsVoiding(true);
+    setVoidError(null);
+
+    try {
+      const res = await fetch(`/api/sales/${saleToVoid.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: voidReason.trim() || "Anulación manual en caja" }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "No se pudo anular la venta");
+      }
+
+      setSaleToVoid(null);
+      setVoidReason("Anulación manual en caja");
+      if (onSaleCanceled && data.data?.customer) {
+        onSaleCanceled(data.data.customer, data.message || "Venta anulada correctamente");
+      }
+    } catch (err: unknown) {
+      setVoidError(err instanceof Error ? err.message : "Error al anular la venta");
+    } finally {
+      setIsVoiding(false);
+    }
+  };
+
   return (
-    <div className="rounded-2xl bg-dark-900/90 border border-dark-750 p-5 backdrop-blur-xl shadow-card">
+    <div className="rounded-2xl bg-dark-900/90 border border-dark-750 p-5 backdrop-blur-xl shadow-card relative">
       {/* Tab Navigation */}
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-dark-800">
         <div className="flex items-center space-x-2">
@@ -118,34 +152,156 @@ export function CustomerHistory({ pointsHistory, sales }: CustomerHistoryProps) 
           </div>
         ) : (
           <div className="divide-y divide-dark-800/80">
-            {sales.map((sale) => (
-              <div key={sale.id} className="py-2.5 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-7 h-7 rounded-lg bg-dark-950 border border-dark-800 flex items-center justify-center text-gray-400">
-                    <Receipt className="w-4 h-4 text-bumeran-400" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-medium text-gray-200">
-                      Ticket #{sale.id.slice(0, 8)} • Fuente: <span className="text-bumeran-400 font-semibold">{sale.source}</span>
+            {sales.map((sale) => {
+              const isCanceled = sale.status === "CANCELED";
+              return (
+                <div key={sale.id} className="py-2.5 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-7 h-7 rounded-lg border flex items-center justify-center ${
+                      isCanceled
+                        ? "bg-red-500/10 border-red-500/20 text-red-400"
+                        : "bg-dark-950 border-dark-800 text-bumeran-400"
+                    }`}>
+                      {isCanceled ? <Ban className="w-3.5 h-3.5" /> : <Receipt className="w-4 h-4" />}
                     </div>
-                    <div className="text-[10px] text-gray-500 flex items-center mt-0.5">
-                      <Clock className="w-2.5 h-2.5 mr-1" />
-                      {formatDate(sale.sale_date)}
+                    <div>
+                      <div className="text-xs font-medium text-gray-200 flex items-center space-x-1.5">
+                        <span className={isCanceled ? "line-through text-gray-400" : ""}>
+                          Ticket #{sale.id.slice(0, 8)}
+                        </span>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-bumeran-400 font-semibold">{sale.source}</span>
+                      </div>
+                      <div className="text-[10px] text-gray-500 flex items-center mt-0.5">
+                        <Clock className="w-2.5 h-2.5 mr-1" />
+                        {formatDate(sale.sale_date)}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="text-right">
-                  <div className="text-xs font-bold text-white">
-                    ${sale.total_amount.toLocaleString("es-AR")}
+                  <div className="flex items-center space-x-3">
+                    <div className="text-right">
+                      <div className={`text-xs font-bold ${isCanceled ? "line-through text-gray-400" : "text-white"}`}>
+                        ${sale.total_amount.toLocaleString("es-AR")}
+                      </div>
+                      {isCanceled ? (
+                        <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                          Anulada
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-400 font-medium">Cerrada</span>
+                      )}
+                    </div>
+
+                    {!isCanceled && (
+                      <button
+                        onClick={() => {
+                          setSaleToVoid(sale);
+                          setVoidError(null);
+                        }}
+                        title="Anular venta y revertir puntos/visita"
+                        className="p-1.5 rounded-lg bg-dark-950 hover:bg-red-500/20 border border-dark-800 hover:border-red-500/30 text-gray-400 hover:text-red-400 transition-colors"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <span className="text-[10px] text-emerald-400 font-medium">Cerrada</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal to Void Sale */}
+      {saleToVoid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-dark-900 border border-red-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-dark-800">
+              <div className="flex items-center space-x-2.5 text-red-400 font-bold">
+                <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                </div>
+                <span>Confirmar Anulación de Venta</span>
+              </div>
+              <button
+                onClick={() => setSaleToVoid(null)}
+                disabled={isVoiding}
+                className="text-gray-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-dark-950 border border-dark-800 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Ticket:</span>
+                <span className="font-mono text-white font-bold">#{saleToVoid.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Monto:</span>
+                <span className="text-white font-bold">${saleToVoid.total_amount.toLocaleString("es-AR")}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Origen:</span>
+                <span className="text-bumeran-400 font-semibold">{saleToVoid.source}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Fecha:</span>
+                <span className="text-gray-300">{formatDate(saleToVoid.sale_date)}</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-300">
+              <strong>Impacto en fidelización:</strong> Se deducirán los puntos acreditados por esta venta del saldo del comensal y se revertirá la visita si correspondió.
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-300">
+                Motivo de anulación:
+              </label>
+              <input
+                type="text"
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Ej: Error de carga, comanda cancelada en mesa..."
+                disabled={isVoiding}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-dark-950 border border-dark-750 text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+              />
+            </div>
+
+            {voidError && (
+              <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-xs text-red-200">
+                {voidError}
+              </div>
+            )}
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSaleToVoid(null)}
+                disabled={isVoiding}
+                className="flex-1 py-2.5 rounded-xl bg-dark-800 hover:bg-dark-700 text-xs font-semibold text-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmVoid}
+                disabled={isVoiding}
+                className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all shadow-glow disabled:opacity-50"
+              >
+                {isVoiding ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Ban className="w-3.5 h-3.5" />
+                )}
+                <span>{isVoiding ? "Anulando..." : "Confirmar Anulación"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
