@@ -27,7 +27,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     setActiveKey(key);
     setTimeout(() => {
       setActiveKey((curr) => (curr === key ? null : curr));
-    }, 150);
+    }, 110);
   };
 
   const submitLogin = useCallback(
@@ -263,11 +263,13 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                       else handlePinDigit(btn);
                     }}
                     disabled={isLoading}
-                    className={`h-14 rounded-2xl text-lg font-bold transition-all flex items-center justify-center active:scale-95 disabled:opacity-50 ${
-                      isFeedbackActive
-                        ? "ring-2 ring-bumeran-500 bg-bumeran-500/20 text-bumeran-400 scale-95 shadow-glow"
-                        : btn === "C" || btn === "⌫"
-                        ? "bg-dark-800/80 hover:bg-dark-750 text-gray-400 text-sm font-semibold"
+                    className={`h-14 rounded-2xl text-lg font-bold transition-all duration-100 flex items-center justify-center active:scale-95 disabled:opacity-50 ${
+                      btn === "C" || btn === "⌫"
+                        ? isFeedbackActive
+                          ? "bg-dark-700 text-white border border-dark-600 scale-[0.98]"
+                          : "bg-dark-800/80 hover:bg-dark-750 text-gray-400 text-sm font-semibold"
+                        : isFeedbackActive
+                        ? "bg-dark-700 text-bumeran-400 border border-bumeran-500/40 scale-[0.98]"
                         : "bg-dark-800 hover:bg-dark-750 text-white border border-dark-700/60 shadow-sm"
                     }`}
                   >
