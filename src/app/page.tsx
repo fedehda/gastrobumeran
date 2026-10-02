@@ -111,10 +111,36 @@ export default function PosPage() {
     showToast("Sesión cerrada correctamente", "info");
   };
 
-  // Load metrics & settings (manual or trigger)
-  const refreshData = useCallback(async () => {
+  // Load metrics & settings (manual refresh also triggers proactive Fudo sync)
+  const refreshData = useCallback(async (options?: { syncFudo?: boolean; showFeedback?: boolean }) => {
     setIsRefreshing(true);
+    let fudoNotice = "";
+
     try {
+      // 1. If syncFudo is not disabled, trigger live sync with Fudo POS
+      if (options?.syncFudo !== false) {
+        try {
+          const syncRes = await fetch("/api/fudo/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fullSync: false, syncCustomers: true }),
+          });
+
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            if (syncData.success && syncData.result) {
+              const { syncedCount, newCustomersCount } = syncData.result;
+              if (syncedCount > 0 || newCustomersCount > 0) {
+                fudoNotice = ` • Fudo: +${syncedCount} ventas, +${newCustomersCount} clientes`;
+              }
+            }
+          }
+        } catch (fudoErr) {
+          console.warn("Aviso: Sincronización Fudo no completada durante el refresco:", fudoErr);
+        }
+      }
+
+      // 2. Fetch fresh local metrics, settings, and customers
       const [resMetrics, resSettings, resCustomers] = await Promise.all([
         fetch("/api/pos/metrics").then((r) => r.json()),
         fetch("/api/settings").then((r) => r.json()),
@@ -124,8 +150,15 @@ export default function PosPage() {
       if (resMetrics.success) setMetrics(resMetrics.metrics);
       if (resSettings.success) setSettings(resSettings.settings);
       if (resCustomers.success) setRecentCustomers(resCustomers.customers);
+
+      if (options?.showFeedback) {
+        showToast(`Datos actualizados correctamente${fudoNotice}`, "success");
+      }
     } catch (err) {
       console.error("Error loading POS data:", err);
+      if (options?.showFeedback) {
+        showToast("Error al actualizar datos", "info");
+      }
     } finally {
       setIsRefreshing(false);
     }
@@ -270,7 +303,7 @@ export default function PosPage() {
         onOpenAudit={() => setIsAuditModalOpen(true)}
         onOpenCsvWizard={() => setIsCsvWizardOpen(true)}
         onOpenFudo={() => setIsFudoModalOpen(true)}
-        onRefreshMetrics={refreshData}
+        onRefreshMetrics={() => refreshData({ syncFudo: true, showFeedback: true })}
         isRefreshing={isRefreshing}
       />
 

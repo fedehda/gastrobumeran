@@ -88,14 +88,14 @@ export function Navbar({
             <span className="text-xs font-medium text-gray-300">Caja Online</span>
           </div>
 
-          {/* Refresh Button */}
+          {/* Refresh & Fudo Sync Button */}
           <button
             onClick={onRefreshMetrics}
             disabled={isRefreshing}
-            title="Actualizar datos"
+            title="Sincronizar con Fudo POS y actualizar métricas"
             className="p-2 rounded-lg bg-dark-900 hover:bg-dark-800 border border-dark-800 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-bumeran-500" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-sky-400" : ""}`} />
           </button>
 
           {/* Fudo API Sync Button */}
