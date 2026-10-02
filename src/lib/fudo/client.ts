@@ -200,12 +200,27 @@ export class FudoApiClient {
 
       const incData = custId ? includedCustomers.get(custId) : undefined;
 
+      let resolvedType: "TABLE" | "COUNTER" | "DELIVERY" = "TABLE";
+      const rawSaleType = String(attrs.saleType || attrs.type || s.type || "").toUpperCase();
+      if (
+        rawSaleType.includes("TAKEAWAY") ||
+        rawSaleType.includes("COUNTER") ||
+        rawSaleType.includes("MOSTRADOR") ||
+        rawSaleType.includes("PICKUP")
+      ) {
+        resolvedType = "COUNTER";
+      } else if (rawSaleType.includes("DELIVERY") || rawSaleType.includes("ENVIO")) {
+        resolvedType = "DELIVERY";
+      } else {
+        resolvedType = "TABLE";
+      }
+
       return {
         id: String(s.id),
         total: Number(attrs.total ?? s.total ?? s.totalAmount ?? s.amount ?? 0),
         createdAt: String(attrs.closedAt || attrs.createdAt || s.createdAt || s.date || new Date().toISOString()),
         status: ((attrs.saleState || attrs.status || s.status) as "CLOSED" | "OPEN" | "CANCELED") || "CLOSED",
-        type: ((attrs.saleType || attrs.type || s.type) as "TABLE" | "COUNTER" | "DELIVERY") || "TABLE",
+        type: resolvedType,
         customerId: custId,
         customerName:
           incData?.name ||

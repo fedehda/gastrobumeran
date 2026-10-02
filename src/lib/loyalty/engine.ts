@@ -22,6 +22,7 @@ export interface ProcessSaleInput {
   totalAmount: number;
   saleDate?: string; // ISO string
   source?: SaleSource;
+  saleType?: "TABLE" | "COUNTER" | "DELIVERY";
   externalSaleId?: string;
   concept?: string;
   importBatchId?: string;
@@ -82,8 +83,14 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   const pointsEarned = Math.floor(input.totalAmount / earningRate);
 
   // 4. Eje Visitas y Antifraude Cooldown (RF-04)
+  // Regla de Negocio: Los pedidos en mostrador / takeaway / delivery no suman sellos de visita, sólo puntos de consumo.
+  const isCounterOrDelivery =
+    input.saleType === "COUNTER" ||
+    input.saleType === "DELIVERY" ||
+    (input.concept ? /mostrador|take\s*away|delivery|para\s*llevar/i.test(input.concept) : false);
+
   let visitAdded = false;
-  if (input.totalAmount >= settings.min_spend_for_visit) {
+  if (!isCounterOrDelivery && input.totalAmount >= settings.min_spend_for_visit) {
     if (!customer.last_visit_at) {
       visitAdded = true;
     } else {
@@ -198,7 +205,9 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       points_expire_at: newExpirationStr,
       batch_expires_at: batchExpiresAt,
       points_history_entry: historyEntry,
-      message: `¡Venta registrada con éxito! Sumaste ${pointsEarned} puntos${visitAdded ? " y 1 visita" : ""}. Vencimiento rolling renovado a ${expirationDays} días. Lote FIFO activo por ${lifetimeDays} días.`,
+      message: `¡Venta registrada con éxito! Sumaste ${pointsEarned} puntos${
+        visitAdded ? " y 1 visita" : isCounterOrDelivery ? " (mostrador/delivery no suma visita)" : ""
+      }. Vencimiento rolling renovado a ${expirationDays} días. Lote FIFO activo por ${lifetimeDays} días.`,
     };
   } catch (err: unknown) {
     db.exec("ROLLBACK");

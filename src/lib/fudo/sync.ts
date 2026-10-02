@@ -220,6 +220,7 @@ export async function syncFudoSales(options?: SyncOptions): Promise<FudoSyncResu
         totalAmount: sale.total,
         saleDate: sale.createdAt,
         source: "FUDO_API",
+        saleType: sale.type,
         externalSaleId: sale.id,
         concept: `Venta Fudo #${sale.id} (${typeLabel})`,
       });

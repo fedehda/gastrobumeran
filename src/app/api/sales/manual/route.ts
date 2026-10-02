@@ -4,7 +4,7 @@ import { processSale } from "@/lib/loyalty/engine";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { customerId, documentNumber, totalAmount, concept, saleDate } = body;
+    const { customerId, documentNumber, totalAmount, concept, saleDate, saleType } = body;
 
     const amount = parseFloat(totalAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       documentNumber,
       totalAmount: amount,
       source: "MANUAL",
+      saleType: saleType as ("TABLE" | "COUNTER" | "DELIVERY") | undefined,
       concept: concept || undefined,
       saleDate: saleDate || undefined,
     });

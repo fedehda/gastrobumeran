@@ -114,7 +114,52 @@ async function main() {
   const audit = runExpirationAudit();
   console.log("Resultado auditoría:", audit);
 
-  console.log("\n=== TODAS LAS PRUEBAS DEL ANEXO COMPLETADAS CON ÉXITO ===");
+  // 8. Regla de Negocio: Pedidos en Mostrador / Take Away / Delivery (Puntos Sí, Visitas No)
+  console.log("\n8. Probando regla de negocio: Pedidos en Mostrador (Puntos Sí, Visitas No)...");
+  const custBeforeCounter = findCustomerByDocument(testDoc)!;
+  const initialVisits = custBeforeCounter.visit_count;
+  const initialPoints = custBeforeCounter.points_balance;
+  const initialSpent = custBeforeCounter.total_spent;
+  const lastVisitBefore = custBeforeCounter.last_visit_at;
+
+  const counterAmount = 25000;
+  const expectedPoints = Math.floor(counterAmount / settings.points_earning_rate);
+
+  const counterSale = processSale({
+    customerId: custBeforeCounter.id,
+    totalAmount: counterAmount,
+    saleType: "COUNTER",
+    concept: "Take Away / Mostrador - Hamburguesas",
+  });
+
+  console.log("Resultado venta mostrador:", {
+    puntos_ganados: counterSale.points_earned,
+    visita_sumada: counterSale.visit_added,
+    mensaje: counterSale.message,
+    visitas_cliente: counterSale.customer.visit_count,
+  });
+
+  if (counterSale.visit_added !== false) {
+    throw new Error("❌ Error: La venta de mostrador no debió sumar visita (visit_added debe ser false).");
+  }
+  if (counterSale.customer.visit_count !== initialVisits) {
+    throw new Error(`❌ Error: visit_count cambió de ${initialVisits} a ${counterSale.customer.visit_count} en una venta de mostrador.`);
+  }
+  if (counterSale.customer.last_visit_at !== lastVisitBefore) {
+    throw new Error("❌ Error: last_visit_at no debió alterarse en una venta de mostrador.");
+  }
+  if (counterSale.points_earned !== expectedPoints) {
+    throw new Error(`❌ Error: Se esperaban ${expectedPoints} puntos pero se obtuvieron ${counterSale.points_earned}.`);
+  }
+  if (counterSale.customer.points_balance !== initialPoints + expectedPoints) {
+    throw new Error("❌ Error: El saldo de puntos del cliente no se incrementó correctamente.");
+  }
+  if (counterSale.customer.total_spent !== initialSpent + counterAmount) {
+    throw new Error("❌ Error: El total gastado no se acumuló correctamente.");
+  }
+  console.log("✔ Venta de mostrador validada: acreditó puntos y preservó intactas las visitas.");
+
+  console.log("\n=== TODAS LAS PRUEBAS DEL MOTOR COMPLETADAS CON ÉXITO ===");
 }
 
 main().catch(console.error);

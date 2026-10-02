@@ -24,6 +24,12 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
   const pointsRate = Math.max(1, settings.points_earning_rate);
   const projectedPoints = Math.floor(amount / pointsRate);
 
+  // Concept & Sale type resolution
+  const isCounter = concept.includes("Mostrador") || concept.includes("Take Away");
+  const isDelivery = concept.includes("Delivery");
+  const isCounterOrDelivery = isCounter || isDelivery;
+  const currentSaleType = isCounter ? "COUNTER" : isDelivery ? "DELIVERY" : "TABLE";
+
   // Projected visit addition
   const isVisitSpendEligible = amount >= settings.min_spend_for_visit;
   let isCooldownActive = false;
@@ -33,7 +39,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
     const diffHours = (now - lastVisit) / (1000 * 60 * 60);
     isCooldownActive = diffHours < settings.visit_cooldown_hours && diffHours >= 0;
   }
-  const willAddVisit = isVisitSpendEligible && !isCooldownActive;
+  const willAddVisit = !isCounterOrDelivery && isVisitSpendEligible && !isCooldownActive;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +59,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
           customerId: customer.id,
           totalAmount: amount,
           concept,
+          saleType: currentSaleType,
         }),
       });
 
@@ -163,7 +170,9 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
               <div className="h-4 w-px bg-dark-800" />
               <div className="flex items-center text-gray-300">
                 <Calendar className="w-3.5 h-3.5 mr-1 text-amber-400" />
-                {willAddVisit ? (
+                {isCounterOrDelivery ? (
+                  <span className="text-amber-400/90 font-medium">Mostrador / Delivery no suma visita</span>
+                ) : willAddVisit ? (
                   <span className="text-emerald-400 font-semibold">✓ Sumará +1 Visita</span>
                 ) : isCooldownActive ? (
                   <span className="text-gray-400 italic">Cooldown 18hs activo (no suma visita repetida)</span>
