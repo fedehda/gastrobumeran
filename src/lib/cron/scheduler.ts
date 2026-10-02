@@ -1,5 +1,5 @@
 import { getFudoConfig } from "@/lib/db/fudo-repo";
-import { syncFudoSales } from "@/lib/fudo/sync";
+import { posGateway } from "@/lib/pos";
 import { logCronExecution } from "@/lib/db/cron-repo";
 import { runExpirationAudit } from "@/lib/loyalty/engine";
 
@@ -33,7 +33,7 @@ export async function executeFudoAutoSyncTick(): Promise<void> {
       if (!config.last_sync_at || now - lastSyncTime >= intervalMs) {
         const startTime = Date.now();
         try {
-          const result = await syncFudoSales({ fullSync: false, syncCustomers: true });
+          const result = await posGateway.syncSales({ provider: "FUDO", fullSync: false, syncCustomers: true });
           const durationMs = Date.now() - startTime;
           const summary = `Auto-Sync Fudo completado en ${durationMs}ms: ${result.syncedCount} ventas ingeridas (${result.totalPointsEarned} pts), ${result.newCustomersCount} comensales vinculados.`;
 

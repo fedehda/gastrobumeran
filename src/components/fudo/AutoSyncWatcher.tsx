@@ -53,10 +53,35 @@ export function AutoSyncWatcher() {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // 4. Conexión en tiempo real vía Server-Sent Events (SSE)
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource("/api/pos/realtime/stream");
+      eventSource.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type && payload.type !== "CONNECTED") {
+            window.dispatchEvent(
+              new CustomEvent("gastrobumeran:sync-completed", {
+                detail: payload,
+              })
+            );
+          }
+        } catch {
+          // ignore non-json pings
+        }
+      };
+    } catch {
+      // Fallback a polling normal
+    }
+
     return () => {
       clearTimeout(initialTimer);
       clearInterval(intervalTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (eventSource) {
+        eventSource.close();
+      }
     };
   }, []);
 

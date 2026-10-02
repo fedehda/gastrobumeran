@@ -33,16 +33,35 @@ export function findCustomerByPhone(phone: string): Customer | null {
   return row || null;
 }
 
-export function findCustomerByFudoId(fudoId: string): Customer | null {
+export function findCustomerByPosId(provider: string, externalId: string): Customer | null {
   const db = getDatabase();
-  const cleanId = fudoId.trim();
-  const row = db.prepare("SELECT * FROM customers WHERE fudo_customer_id = ?").get(cleanId) as Customer | undefined;
-  return row || null;
+  const cleanId = (externalId || "").trim();
+  if (!cleanId) return null;
+
+  if (provider.toUpperCase() === "FUDO") {
+    const row = db.prepare("SELECT * FROM customers WHERE fudo_customer_id = ?").get(cleanId) as Customer | undefined;
+    if (row) return row;
+  }
+
+  return null;
+}
+
+export function linkCustomerPosId(customerId: string, provider: string, externalId: string): void {
+  const db = getDatabase();
+  const cleanId = (externalId || "").trim();
+  if (!cleanId) return;
+
+  if (provider.toUpperCase() === "FUDO") {
+    db.prepare("UPDATE customers SET fudo_customer_id = ? WHERE id = ?").run(cleanId, customerId);
+  }
+}
+
+export function findCustomerByFudoId(fudoId: string): Customer | null {
+  return findCustomerByPosId("FUDO", fudoId);
 }
 
 export function linkFudoCustomerId(customerId: string, fudoCustomerId: string): void {
-  const db = getDatabase();
-  db.prepare("UPDATE customers SET fudo_customer_id = ? WHERE id = ?").run(fudoCustomerId.trim(), customerId);
+  linkCustomerPosId(customerId, "FUDO", fudoCustomerId);
 }
 
 export function searchCustomers(query: string, limit = 10): Customer[] {

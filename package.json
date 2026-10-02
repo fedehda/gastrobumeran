@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "reset-test-data": "tsx src/scripts/reset-test-data.ts",
-    "worker": "tsx src/scripts/fudo-cron-worker.ts"
+    "worker": "tsx src/scripts/fudo-cron-worker.ts",
+    "listener": "tsx src/scripts/pos-realtime-listener.ts"
   },
   "dependencies": {
     "@types/papaparse": "^5.5.2",

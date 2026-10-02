@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchCustomers, createCustomer, findCustomerByDocument, linkFudoCustomerId } from "@/lib/db/customer-repo";
-import { FudoApiClient } from "@/lib/fudo/client";
+import { searchCustomers, createCustomer, findCustomerByDocument } from "@/lib/db/customer-repo";
+import { posGateway } from "@/lib/pos";
 
 export async function GET(req: NextRequest) {
   try {
@@ -48,30 +48,21 @@ export async function POST(req: NextRequest) {
       birth_date,
     });
 
-    // Sincronización proactiva bidireccional con Fudo POS
+    // Sincronización proactiva bidireccional con el sistema POS activo (vía POS Gateway)
     let fudoSynced = false;
     let fudoCustomerId: string | null = newCustomer.fudo_customer_id || null;
 
     try {
-      const fudoClient = new FudoApiClient();
       if (!fudoCustomerId) {
-        const fudoCust = await fudoClient.createCustomer({
-          name: newCustomer.name,
-          documentNumber: newCustomer.document_number,
-          phone: newCustomer.phone,
-          email: newCustomer.email,
-          birthDate: newCustomer.birth_date,
-        });
-
-        if (fudoCust && fudoCust.id) {
-          linkFudoCustomerId(newCustomer.id, fudoCust.id);
-          fudoCustomerId = fudoCust.id;
-          newCustomer.fudo_customer_id = fudoCust.id;
+        const pushResult = await posGateway.pushCustomer(newCustomer, "FUDO");
+        if (pushResult.success && pushResult.externalId) {
+          fudoCustomerId = pushResult.externalId;
+          newCustomer.fudo_customer_id = pushResult.externalId;
           fudoSynced = true;
         }
       }
-    } catch (fudoErr) {
-      console.warn("Aviso: No se pudo dar de alta al cliente en Fudo POS (el registro local se completó):", fudoErr);
+    } catch (posErr) {
+      console.warn("Aviso: No se pudo dar de alta al cliente en el POS (el registro local se completó):", posErr);
     }
 
     return NextResponse.json(
@@ -81,7 +72,7 @@ export async function POST(req: NextRequest) {
         fudo_synced: fudoSynced,
         fudo_customer_id: fudoCustomerId,
         message: fudoSynced
-          ? `Comensal registrado y sincronizado en Fudo POS (ID: ${fudoCustomerId}).`
+          ? `Comensal registrado y sincronizado en el POS (ID: ${fudoCustomerId}).`
           : "Comensal registrado con éxito en GastroBumeran.",
       },
       { status: 201 }
