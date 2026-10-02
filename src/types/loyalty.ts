@@ -108,6 +108,8 @@ export interface FudoCustomer {
   fiscalNumber?: string | null;
   phone?: string | null;
   email?: string | null;
+  birthDate?: string | null;
+  address?: string | null;
 }
 
 export interface FudoSale {
@@ -117,13 +119,19 @@ export interface FudoSale {
   status: "CLOSED" | "OPEN" | "CANCELED";
   type: "TABLE" | "COUNTER" | "DELIVERY";
   customerId?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerDocument?: string | null;
 }
 
 export interface FudoSyncResult {
   totalRetrieved: number;
   syncedCount: number;
   duplicatedCount: number;
+  unassignedCount: number;
   newCustomersCount: number;
+  importedCustomersCount?: number;
+  updatedCustomersCount?: number;
   totalPointsEarned: number;
   totalAmountProcessed: number;
   errors: string[];

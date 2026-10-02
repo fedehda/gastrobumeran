@@ -5,8 +5,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const fullSync = Boolean(body.fullSync);
+    const syncCustomers = body.syncCustomers !== false;
 
-    const result = await syncFudoSales({ fullSync });
+    const result = await syncFudoSales({ fullSync, syncCustomers });
     return NextResponse.json({
       success: true,
       result,

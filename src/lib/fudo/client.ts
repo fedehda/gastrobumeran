@@ -109,12 +109,33 @@ export class FudoApiClient {
     const token = await this.authenticate();
     const baseUrl = this.getApiBaseUrl();
     const url = new URL(`${baseUrl}/sales`);
-    url.searchParams.set("status", "CLOSED");
-    if (fromIso) {
-      url.searchParams.set("from", fromIso);
-    }
-    if (toIso) {
-      url.searchParams.set("to", toIso);
+
+    // 1. Strict OpenAPI filter: filter[saleState]=in.(CLOSED)
+    url.searchParams.set("filter[saleState]", "in.(CLOSED)");
+
+    // 2. Strict OpenAPI sort: newest sales first
+    url.searchParams.set("sort", "-createdAt");
+
+    // 3. Strict OpenAPI paging: get max items per page
+    url.searchParams.set("page[size]", "250");
+
+    // 4. Strict OpenAPI include: include customer relationship data
+    url.searchParams.set("include", "customer");
+
+    // 5. Strict OpenAPI date filtering: regex ^(gte|lte)\.\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z)?
+    const formatFudoDate = (iso: string): string => {
+      return new Date(iso).toISOString().replace(/\.\d{3}Z$/, "Z");
+    };
+
+    if (fromIso && toIso) {
+      url.searchParams.set(
+        "filter[createdAt]",
+        `and(gte.${formatFudoDate(fromIso)},lte.${formatFudoDate(toIso)})`
+      );
+    } else if (fromIso) {
+      url.searchParams.set("filter[createdAt]", `gte.${formatFudoDate(fromIso)}`);
+    } else if (toIso) {
+      url.searchParams.set("filter[createdAt]", `lte.${formatFudoDate(toIso)}`);
     }
 
     const response = await fetch(url.toString(), {
@@ -134,19 +155,63 @@ export class FudoApiClient {
     const json = await response.json();
     const rawSales = Array.isArray(json) ? json : json.data || json.sales || [];
 
+    // Parse included customers map if available in JSON:API response
+    const includedCustomers = new Map<
+      string,
+      {
+        name: string;
+        vatNumber?: string | null;
+        phone?: string | null;
+        email?: string | null;
+      }
+    >();
+
+    if (Array.isArray(json.included)) {
+      for (const inc of json.included) {
+        if (inc.type === "Customer" && inc.id) {
+          const iAttrs = (inc.attributes as Record<string, unknown>) || {};
+          includedCustomers.set(String(inc.id), {
+            name: String(iAttrs.name || ""),
+            vatNumber:
+              iAttrs.vatNumber || iAttrs.fiscalNumber || iAttrs.cuit || iAttrs.dni
+                ? String(iAttrs.vatNumber || iAttrs.fiscalNumber || iAttrs.cuit || iAttrs.dni)
+                : null,
+            phone: iAttrs.phone ? String(iAttrs.phone) : null,
+            email: iAttrs.email ? String(iAttrs.email) : null,
+          });
+        }
+      }
+    }
+
     // Normalize sales to FudoSale interface (supports JSON:API attributes/relationships as well as flat fields)
     return rawSales.map((s: Record<string, unknown>) => {
       const attrs = (s.attributes as Record<string, unknown>) || {};
       const rels = (s.relationships as Record<string, unknown>) || {};
       const custRel = (rels.customer as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+      const anon = (attrs.anonymousCustomer as Record<string, unknown>) || undefined;
+
+      const custId = custRel?.id
+        ? String(custRel.id)
+        : s.customerId
+        ? String(s.customerId)
+        : s.customer_id
+        ? String(s.customer_id)
+        : null;
+
+      const incData = custId ? includedCustomers.get(custId) : undefined;
 
       return {
         id: String(s.id),
         total: Number(attrs.total ?? s.total ?? s.totalAmount ?? s.amount ?? 0),
-        createdAt: String(attrs.createdAt || s.createdAt || s.date || new Date().toISOString()),
-        status: ((attrs.status || s.status) as "CLOSED" | "OPEN" | "CANCELED") || "CLOSED",
-        type: ((attrs.type || s.type) as "TABLE" | "COUNTER" | "DELIVERY") || "TABLE",
-        customerId: custRel?.id ? String(custRel.id) : (s.customerId ? String(s.customerId) : s.customer_id ? String(s.customer_id) : null),
+        createdAt: String(attrs.closedAt || attrs.createdAt || s.createdAt || s.date || new Date().toISOString()),
+        status: ((attrs.saleState || attrs.status || s.status) as "CLOSED" | "OPEN" | "CANCELED") || "CLOSED",
+        type: ((attrs.saleType || attrs.type || s.type) as "TABLE" | "COUNTER" | "DELIVERY") || "TABLE",
+        customerId: custId,
+        customerName:
+          incData?.name ||
+          (attrs.customerName ? String(attrs.customerName) : anon?.name ? String(anon.name) : null),
+        customerPhone: incData?.phone || (anon?.phone ? String(anon.phone) : null),
+        customerDocument: incData?.vatNumber || null,
       };
     });
   }
@@ -191,12 +256,66 @@ export class FudoApiClient {
       id: String(data.id),
       name: String(attrs.name || "Comensal Fudo"),
       fiscalNumber:
-        attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId
-          ? String(attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId)
+        attrs.vatNumber || attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId
+          ? String(attrs.vatNumber || attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId)
           : null,
       phone: attrs.phone ? String(attrs.phone) : null,
       email: attrs.email ? String(attrs.email) : null,
+      birthDate: attrs.birthDate ? String(attrs.birthDate) : null,
+      address: attrs.address ? String(attrs.address) : null,
     };
+  }
+
+  /**
+   * Fetches customer directory from Fudo API or sandbox
+   */
+  public async getCustomers(options?: { activeOnly?: boolean; limit?: number }): Promise<FudoCustomer[]> {
+    if (this.isSandbox()) {
+      return Object.values(this.getSandboxDirectory());
+    }
+
+    const token = await this.authenticate();
+    const baseUrl = this.getApiBaseUrl();
+    const url = new URL(`${baseUrl}/customers`);
+
+    if (options?.activeOnly !== false) {
+      url.searchParams.set("filter[active]", "eq.true");
+    }
+    url.searchParams.set("sort", "-createdAt");
+    url.searchParams.set("page[size]", String(options?.limit || 250));
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Error al consultar directorio de clientes en Fudo (${response.status}): ${err}`);
+    }
+
+    const json = await response.json();
+    const rawData = Array.isArray(json) ? json : json.data || [];
+
+    return rawData.map((item: Record<string, unknown>) => {
+      const attrs = (item.attributes as Record<string, unknown>) || item;
+      return {
+        id: String(item.id),
+        name: String(attrs.name || "Comensal Fudo"),
+        fiscalNumber:
+          attrs.vatNumber || attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId
+            ? String(attrs.vatNumber || attrs.fiscalNumber || attrs.cuit || attrs.dni || attrs.taxId)
+            : null,
+        phone: attrs.phone ? String(attrs.phone) : null,
+        email: attrs.email ? String(attrs.email) : null,
+        birthDate: attrs.birthDate ? String(attrs.birthDate) : null,
+        address: attrs.address ? String(attrs.address) : null,
+      };
+    });
   }
 
   /**
@@ -348,6 +467,7 @@ export class FudoApiClient {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
 
+    const dir = this.getSandboxDirectory();
     const mockSales: FudoSale[] = [
       {
         id: "FUDO-SALE-2001",
@@ -356,6 +476,9 @@ export class FudoApiClient {
         status: "CLOSED",
         type: "TABLE",
         customerId: "FUDO-CUST-101",
+        customerName: dir["FUDO-CUST-101"]?.name,
+        customerDocument: dir["FUDO-CUST-101"]?.fiscalNumber,
+        customerPhone: dir["FUDO-CUST-101"]?.phone,
       },
       {
         id: "FUDO-SALE-2002",
@@ -364,6 +487,9 @@ export class FudoApiClient {
         status: "CLOSED",
         type: "COUNTER",
         customerId: "FUDO-CUST-102",
+        customerName: dir["FUDO-CUST-102"]?.name,
+        customerDocument: dir["FUDO-CUST-102"]?.fiscalNumber,
+        customerPhone: dir["FUDO-CUST-102"]?.phone,
       },
       {
         id: "FUDO-SALE-2003",
@@ -372,6 +498,9 @@ export class FudoApiClient {
         status: "CLOSED",
         type: "TABLE",
         customerId: "FUDO-CUST-103",
+        customerName: dir["FUDO-CUST-103"]?.name,
+        customerDocument: dir["FUDO-CUST-103"]?.fiscalNumber,
+        customerPhone: dir["FUDO-CUST-103"]?.phone,
       },
       {
         id: "FUDO-SALE-2004",
@@ -380,6 +509,9 @@ export class FudoApiClient {
         status: "CLOSED",
         type: "DELIVERY",
         customerId: "FUDO-CUST-104",
+        customerName: dir["FUDO-CUST-104"]?.name,
+        customerDocument: dir["FUDO-CUST-104"]?.fiscalNumber,
+        customerPhone: dir["FUDO-CUST-104"]?.phone,
       },
       {
         id: "FUDO-SALE-2005",
@@ -388,6 +520,9 @@ export class FudoApiClient {
         status: "CLOSED",
         type: "TABLE",
         customerId: "FUDO-CUST-101", // Recompra de Esteban Morales
+        customerName: dir["FUDO-CUST-101"]?.name,
+        customerDocument: dir["FUDO-CUST-101"]?.fiscalNumber,
+        customerPhone: dir["FUDO-CUST-101"]?.phone,
       },
       {
         id: "FUDO-SALE-2006",
@@ -396,6 +531,9 @@ export class FudoApiClient {
         status: "CLOSED",
         type: "COUNTER",
         customerId: "FUDO-CUST-105",
+        customerName: dir["FUDO-CUST-105"]?.name,
+        customerDocument: dir["FUDO-CUST-105"]?.fiscalNumber,
+        customerPhone: dir["FUDO-CUST-105"]?.phone,
       },
     ];
 
@@ -420,14 +558,15 @@ export class FudoApiClient {
     return mockSales;
   }
 
-  private getSandboxCustomer(fudoCustomerId: string): FudoCustomer {
-    const sandboxDirectory: Record<string, FudoCustomer> = {
+  public getSandboxDirectory(): Record<string, FudoCustomer> {
+    return {
       "FUDO-CUST-101": {
         id: "FUDO-CUST-101",
         name: "Esteban Morales",
         fiscalNumber: "32111222",
         phone: "+5491144332211",
         email: "esteban.morales@gmail.com",
+        birthDate: "1988-06-15",
       },
       "FUDO-CUST-102": {
         id: "FUDO-CUST-102",
@@ -435,6 +574,7 @@ export class FudoApiClient {
         fiscalNumber: "38999888",
         phone: "+5491188776655",
         email: "flor.varela@hotmail.com",
+        birthDate: "1994-09-22",
       },
       "FUDO-CUST-103": {
         id: "FUDO-CUST-103",
@@ -442,6 +582,7 @@ export class FudoApiClient {
         fiscalNumber: "29444555",
         phone: "+5491133221100",
         email: "gonzalo.p@gmail.com",
+        birthDate: "1982-03-10",
       },
       "FUDO-CUST-104": {
         id: "FUDO-CUST-104",
@@ -449,6 +590,7 @@ export class FudoApiClient {
         fiscalNumber: "36555444",
         phone: "+5491166554433",
         email: "camila.rossi@yahoo.com",
+        birthDate: "1991-11-05",
       },
       "FUDO-CUST-105": {
         id: "FUDO-CUST-105",
@@ -456,11 +598,15 @@ export class FudoApiClient {
         fiscalNumber: "41222333",
         phone: "+5491177889900",
         email: "martin.b@outlook.com",
+        birthDate: "1998-01-30",
       },
     };
+  }
 
+  private getSandboxCustomer(fudoCustomerId: string): FudoCustomer {
+    const dir = this.getSandboxDirectory();
     return (
-      sandboxDirectory[fudoCustomerId] || {
+      dir[fudoCustomerId] || {
         id: fudoCustomerId,
         name: `Cliente Fudo (${fudoCustomerId})`,
         fiscalNumber: `99${Math.floor(100000 + Math.random() * 900000)}`,

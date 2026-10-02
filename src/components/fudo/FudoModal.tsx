@@ -51,6 +51,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
   } | null>(null);
 
   const [syncResult, setSyncResult] = useState<FudoSyncResult | null>(null);
+  const [syncCustomers, setSyncCustomers] = useState(true);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -174,7 +175,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
       const res = await fetch("/api/fudo/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullSync }),
+        body: JSON.stringify({ fullSync, syncCustomers }),
       });
 
       const data = await res.json();
@@ -457,17 +458,32 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 pt-2">
-                      <input
-                        type="checkbox"
-                        id="fullSync"
-                        checked={fullSync}
-                        onChange={(e) => setFullSync(e.target.checked)}
-                        className="w-4 h-4 rounded bg-dark-900 border-dark-700 text-sky-500 focus:ring-sky-500"
-                      />
-                      <label htmlFor="fullSync" className="text-xs text-gray-300 cursor-pointer">
-                        Sincronización completa (ignorar fecha previa)
-                      </label>
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="syncCustomers"
+                          checked={syncCustomers}
+                          onChange={(e) => setSyncCustomers(e.target.checked)}
+                          className="w-4 h-4 rounded bg-dark-900 border-dark-700 text-sky-500 focus:ring-sky-500"
+                        />
+                        <label htmlFor="syncCustomers" className="text-xs text-gray-300 cursor-pointer">
+                          Sincronizar directorio de clientes de Fudo
+                        </label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="fullSync"
+                          checked={fullSync}
+                          onChange={(e) => setFullSync(e.target.checked)}
+                          className="w-4 h-4 rounded bg-dark-900 border-dark-700 text-sky-500 focus:ring-sky-500"
+                        />
+                        <label htmlFor="fullSync" className="text-xs text-gray-300 cursor-pointer">
+                          Sincronización completa de ventas (ignorar fecha previa)
+                        </label>
+                      </div>
                     </div>
                   </div>
 
@@ -497,7 +513,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
                       <div className="flex items-center justify-center text-sky-400 mb-1">
                         <Receipt className="w-4 h-4" />
@@ -511,7 +527,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                         <Users className="w-4 h-4" />
                       </div>
                       <div className="text-xl font-bold text-white">{syncResult.newCustomersCount}</div>
-                      <div className="text-[11px] text-gray-400">Nuevos Comensales</div>
+                      <div className="text-[11px] text-gray-400">Comensales Fudo</div>
                     </div>
 
                     <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
@@ -530,6 +546,14 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                       <div className="text-[11px] text-gray-400">Duplicadas (Omitidas)</div>
                     </div>
 
+                    <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
+                      <div className="flex items-center justify-center text-amber-400 mb-1">
+                        <AlertCircle className="w-4 h-4" />
+                      </div>
+                      <div className="text-xl font-bold text-amber-300">{syncResult.unassignedCount || 0}</div>
+                      <div className="text-[11px] text-gray-400">Sin Cliente Fudo</div>
+                    </div>
+
                     <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center col-span-2 sm:col-span-1">
                       <div className="flex items-center justify-center text-emerald-400 mb-1">
                         <Receipt className="w-4 h-4" />
@@ -540,6 +564,15 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                       <div className="text-[11px] text-gray-400">Facturación Total</div>
                     </div>
                   </div>
+
+                  {syncResult.unassignedCount > 0 && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300 flex items-start space-x-2">
+                      <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Atención ({syncResult.unassignedCount} venta(s) sin cliente):</strong> En Fudo, para que una venta cerrada sume puntos en GastroBumeran, el cajero o mozo debe tener asignado un cliente en la comanda/ticket de Fudo (o haber registrado su teléfono/DNI). Las ventas anónimas o a consumidor final no acumulan puntos.
+                      </span>
+                    </div>
+                  )}
 
                   {syncResult.errors.length > 0 && (
                     <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 space-y-1">
