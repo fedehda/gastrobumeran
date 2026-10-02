@@ -38,6 +38,7 @@ echo   Iniciando GastroBumeran en: http://localhost:3000
 echo.
 echo   * Punto de Cobro & Caja POS: http://localhost:3000
 echo   * Portal del Comensal PWA:   http://localhost:3000/portal
+echo   * Auto-Sync Fudo POS:        Daemon activo en segundo plano
 echo   * Credenciales Demo Admin:   admin@gastrobumeran.com / admin123 (PIN: 1234)
 echo.
 echo   Abriendo tu navegador web predeterminado...

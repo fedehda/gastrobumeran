@@ -363,13 +363,21 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                           disabled={!autoSync}
                           className="w-full px-2.5 py-1.5 bg-dark-900 border border-dark-700 rounded-lg text-xs text-white disabled:opacity-50"
                         >
+                          <option value={2}>Cada 2 minutos (Pruebas / En vivo)</option>
+                          <option value={5}>Cada 5 minutos (Recomendado)</option>
                           <option value={15}>Cada 15 minutos</option>
                           <option value={30}>Cada 30 minutos</option>
-                          <option value={60}>Cada 1 hora (Recomendado)</option>
+                          <option value={60}>Cada 1 hora</option>
                           <option value={120}>Cada 2 horas</option>
                         </select>
                       </div>
                     </div>
+                    {autoSync && (
+                      <p className="text-[11px] text-emerald-400/90 pt-1 flex items-center space-x-1.5">
+                        <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span>Daemon activo: GastroBumeran actualizará comensales y ventas en segundo plano cada {syncInterval} minutos.</span>
+                      </p>
+                    )}
 
                     {/* Action buttons */}
                     <div className="flex items-center space-x-3 pt-3">

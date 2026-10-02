@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { AutoSyncWatcher } from "@/components/fudo/AutoSyncWatcher";
 
 export const viewport: Viewport = {
   themeColor: "#0f172a",
@@ -28,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark h-full">
       <body className="min-h-full flex flex-col bg-dark-950 text-gray-100 antialiased selection:bg-bumeran-500 selection:text-white">
+        <AutoSyncWatcher />
         {children}
       </body>
     </html>

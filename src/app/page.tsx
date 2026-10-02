@@ -158,6 +158,17 @@ export default function PosPage() {
     };
   }, []);
 
+  // Auto-refresh when background auto-sync detects new sales or customers
+  useEffect(() => {
+    const handleSyncEvent = () => {
+      refreshData();
+    };
+    window.addEventListener("gastrobumeran:sync-completed", handleSyncEvent);
+    return () => {
+      window.removeEventListener("gastrobumeran:sync-completed", handleSyncEvent);
+    };
+  }, [refreshData]);
+
   // Load detailed customer by ID
   const selectCustomer = async (c: Customer) => {
     setIsLoadingCustomer(true);

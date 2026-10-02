@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "reset-test-data": "tsx src/scripts/reset-test-data.ts"
+    "reset-test-data": "tsx src/scripts/reset-test-data.ts",
+    "worker": "tsx src/scripts/fudo-cron-worker.ts"
   },
   "dependencies": {
     "@types/papaparse": "^5.5.2",
