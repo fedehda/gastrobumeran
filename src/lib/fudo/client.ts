@@ -284,7 +284,11 @@ export class FudoApiClient {
   /**
    * Fetches customer directory from Fudo API or sandbox
    */
-  public async getCustomers(options?: { activeOnly?: boolean; limit?: number }): Promise<FudoCustomer[]> {
+  public async getCustomers(options?: {
+    activeOnly?: boolean;
+    limit?: number;
+    sort?: "name" | "-name" | "salesCount" | "-salesCount" | string;
+  }): Promise<FudoCustomer[]> {
     if (this.isSandbox()) {
       return Object.values(this.getSandboxDirectory());
     }
@@ -296,7 +300,11 @@ export class FudoApiClient {
     if (options?.activeOnly !== false) {
       url.searchParams.set("filter[active]", "eq.true");
     }
-    url.searchParams.set("sort", "-createdAt");
+    // Fudo /customers endpoint only permits sorting by: ^((-\?name|-\?salesCount)(,(?!$))?)+$
+    // Do not pass -createdAt as it triggers a 400 Bad Request
+    if (options?.sort) {
+      url.searchParams.set("sort", options.sort);
+    }
     url.searchParams.set("page[size]", String(options?.limit || 250));
 
     const response = await fetch(url.toString(), {
