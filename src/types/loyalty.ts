@@ -60,6 +60,9 @@ export interface LoyaltySettings {
   points_lifetime_days: number; // Timer 2: FIFO batch maximum lifetime (default 365 days)
   min_spend_for_visit: number; // minimum amount to count as visit, e.g. $1500
   visit_cooldown_hours: number; // anti-fraud cooldown between counted visits, default 18h
+  allow_visit_table: boolean; // ¿Mesa / Salón suma visita? Default: true
+  allow_visit_counter: boolean; // ¿Mostrador / Take Away suma visita? Default: false
+  allow_visit_delivery: boolean; // ¿Delivery suma visita? Default: false
   updated_at: string;
 }
 

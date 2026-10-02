@@ -1,6 +1,6 @@
 import { findCustomerByDocument, createCustomer, checkBirthdayStatus } from "@/lib/db/customer-repo";
 import { processSale, redeemReward, redeemBirthdayCourtesy, runExpirationAudit } from "@/lib/loyalty/engine";
-import { getActiveRewards, getLoyaltySettings } from "@/lib/db/settings-repo";
+import { getActiveRewards, getLoyaltySettings, updateLoyaltySettings } from "@/lib/db/settings-repo";
 import { getDatabase } from "@/lib/db/db";
 import { PointsBatch } from "@/types/loyalty";
 
@@ -158,6 +158,63 @@ async function main() {
     throw new Error("❌ Error: El total gastado no se acumuló correctamente.");
   }
   console.log("✔ Venta de mostrador validada: acreditó puntos y preservó intactas las visitas.");
+
+  // 9. Prueba de Toggles Dinámicos por Sector (Modificación en vivo de settings)
+  console.log("\n9. Probando Toggles Dinámicos de Sectores...");
+  // a) Activar que mostrador SÍ sume visitas
+  console.log("9a. Activando allow_visit_counter = true en base de datos...");
+  updateLoyaltySettings({ allow_visit_counter: true });
+  const settingsActiveCounter = getLoyaltySettings();
+  if (!settingsActiveCounter.allow_visit_counter) {
+    throw new Error("❌ Error: allow_visit_counter no se guardó como true.");
+  }
+
+  // Resetear last_visit_at para saltar cooldown en prueba
+  db.prepare("UPDATE customers SET last_visit_at = NULL WHERE id = ?").run(custBeforeCounter.id);
+
+  const counterSaleWithToggle = processSale({
+    customerId: custBeforeCounter.id,
+    totalAmount: 15000,
+    saleType: "COUNTER",
+    concept: "Take Away con Toggle Habilitado",
+  });
+
+  console.log("Resultado mostrador con toggle activo:", {
+    visita_sumada: counterSaleWithToggle.visit_added,
+    mensaje: counterSaleWithToggle.message,
+    visitas_cliente: counterSaleWithToggle.customer.visit_count,
+  });
+
+  if (counterSaleWithToggle.visit_added !== true) {
+    throw new Error("❌ Error: Al activar allow_visit_counter = true, la venta de mostrador debió sumar visita.");
+  }
+  console.log("✔ Toggle ON validado: Mostrador sumó visita correctamente.");
+
+  // b) Restaurar toggle a false
+  console.log("9b. Restaurando allow_visit_counter = false...");
+  updateLoyaltySettings({ allow_visit_counter: false });
+  const settingsRestored = getLoyaltySettings();
+  if (settingsRestored.allow_visit_counter) {
+    throw new Error("❌ Error: allow_visit_counter no se restauró a false.");
+  }
+
+  db.prepare("UPDATE customers SET last_visit_at = NULL WHERE id = ?").run(custBeforeCounter.id);
+  const visitsBeforeOff = counterSaleWithToggle.customer.visit_count;
+
+  const counterSaleWithToggleOff = processSale({
+    customerId: custBeforeCounter.id,
+    totalAmount: 15000,
+    saleType: "COUNTER",
+    concept: "Take Away con Toggle Desactivado",
+  });
+
+  if (counterSaleWithToggleOff.visit_added !== false) {
+    throw new Error("❌ Error: Al restaurar allow_visit_counter = false, no debió sumar visita.");
+  }
+  if (counterSaleWithToggleOff.customer.visit_count !== visitsBeforeOff) {
+    throw new Error("❌ Error: visit_count no debió incrementarse con toggle desactivado.");
+  }
+  console.log("✔ Toggle OFF validado: Mostrador volvió a sumar solo puntos sin visita.");
 
   console.log("\n=== TODAS LAS PRUEBAS DEL MOTOR COMPLETADAS CON ÉXITO ===");
 }

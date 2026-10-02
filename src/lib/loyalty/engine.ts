@@ -83,14 +83,25 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   const pointsEarned = Math.floor(input.totalAmount / earningRate);
 
   // 4. Eje Visitas y Antifraude Cooldown (RF-04)
-  // Regla de Negocio: Los pedidos en mostrador / takeaway / delivery no suman sellos de visita, sólo puntos de consumo.
-  const isCounterOrDelivery =
+  // Regla de Negocio: Se evalúa dinámicamente según la configuración de sectores (Salón, Mostrador, Delivery) si computa visita.
+  const isCounter =
     input.saleType === "COUNTER" ||
+    (input.concept ? /mostrador|take\s*away|para\s*llevar/i.test(input.concept) : false);
+  const isDelivery =
     input.saleType === "DELIVERY" ||
-    (input.concept ? /mostrador|take\s*away|delivery|para\s*llevar/i.test(input.concept) : false);
+    (input.concept ? /delivery|envio/i.test(input.concept) : false);
+
+  let sectorAllowsVisit = true;
+  if (isCounter) {
+    sectorAllowsVisit = Boolean(settings.allow_visit_counter);
+  } else if (isDelivery) {
+    sectorAllowsVisit = Boolean(settings.allow_visit_delivery);
+  } else {
+    sectorAllowsVisit = settings.allow_visit_table !== undefined ? Boolean(settings.allow_visit_table) : true;
+  }
 
   let visitAdded = false;
-  if (!isCounterOrDelivery && input.totalAmount >= settings.min_spend_for_visit) {
+  if (sectorAllowsVisit && input.totalAmount >= settings.min_spend_for_visit) {
     if (!customer.last_visit_at) {
       visitAdded = true;
     } else {
@@ -206,7 +217,7 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       batch_expires_at: batchExpiresAt,
       points_history_entry: historyEntry,
       message: `¡Venta registrada con éxito! Sumaste ${pointsEarned} puntos${
-        visitAdded ? " y 1 visita" : isCounterOrDelivery ? " (mostrador/delivery no suma visita)" : ""
+        visitAdded ? " y 1 visita" : !sectorAllowsVisit ? ` (${isCounter ? "mostrador" : isDelivery ? "delivery" : "salón"} no suma visita según configuración)` : ""
       }. Vencimiento rolling renovado a ${expirationDays} días. Lote FIFO activo por ${lifetimeDays} días.`,
     };
   } catch (err: unknown) {

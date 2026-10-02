@@ -109,6 +109,9 @@ function initDatabase(db: DatabaseSync) {
       points_lifetime_days INTEGER NOT NULL DEFAULT 365,
       min_spend_for_visit REAL NOT NULL DEFAULT 1500.0,
       visit_cooldown_hours INTEGER NOT NULL DEFAULT 18,
+      allow_visit_table INTEGER NOT NULL DEFAULT 1,
+      allow_visit_counter INTEGER NOT NULL DEFAULT 0,
+      allow_visit_delivery INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -178,14 +181,17 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "sales", "claimed_at TEXT");
   safeAddColumn(db, "sales", "claimed_by_customer_id TEXT");
   safeAddColumn(db, "loyalty_settings", "points_lifetime_days INTEGER NOT NULL DEFAULT 365");
+  safeAddColumn(db, "loyalty_settings", "allow_visit_table INTEGER NOT NULL DEFAULT 1");
+  safeAddColumn(db, "loyalty_settings", "allow_visit_counter INTEGER NOT NULL DEFAULT 0");
+  safeAddColumn(db, "loyalty_settings", "allow_visit_delivery INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "fudo_config", "auth_url TEXT NOT NULL DEFAULT 'https://auth.fu.do/api'");
 
   // Seed default settings if none exists
   const settingsCount = (db.prepare("SELECT COUNT(*) as count FROM loyalty_settings").get() as { count: number }).count;
   if (settingsCount === 0) {
     db.prepare(`
-      INSERT INTO loyalty_settings (points_earning_rate, points_expiration_days, points_lifetime_days, min_spend_for_visit, visit_cooldown_hours)
-      VALUES (100.0, 90, 365, 1500.0, 18)
+      INSERT INTO loyalty_settings (points_earning_rate, points_expiration_days, points_lifetime_days, min_spend_for_visit, visit_cooldown_hours, allow_visit_table, allow_visit_counter, allow_visit_delivery)
+      VALUES (100.0, 90, 365, 1500.0, 18, 1, 0, 0)
     `).run();
   }
 

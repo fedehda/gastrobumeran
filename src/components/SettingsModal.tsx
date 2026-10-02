@@ -22,6 +22,15 @@ export function SettingsModal({
   const [lifetimeDays, setLifetimeDays] = useState(settings.points_lifetime_days || 365);
   const [minSpend, setMinSpend] = useState(settings.min_spend_for_visit);
   const [cooldownHours, setCooldownHours] = useState(settings.visit_cooldown_hours);
+  const [allowVisitTable, setAllowVisitTable] = useState(
+    settings.allow_visit_table !== undefined ? settings.allow_visit_table : true
+  );
+  const [allowVisitCounter, setAllowVisitCounter] = useState(
+    settings.allow_visit_counter !== undefined ? settings.allow_visit_counter : false
+  );
+  const [allowVisitDelivery, setAllowVisitDelivery] = useState(
+    settings.allow_visit_delivery !== undefined ? settings.allow_visit_delivery : false
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -42,6 +51,9 @@ export function SettingsModal({
           points_lifetime_days: Number(lifetimeDays),
           min_spend_for_visit: Number(minSpend),
           visit_cooldown_hours: Number(cooldownHours),
+          allow_visit_table: Boolean(allowVisitTable),
+          allow_visit_counter: Boolean(allowVisitCounter),
+          allow_visit_delivery: Boolean(allowVisitDelivery),
         }),
       });
 
@@ -64,7 +76,7 @@ export function SettingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="max-w-md w-full rounded-2xl bg-dark-900 border border-dark-750 p-6 shadow-2xl animate-in fade-in zoom-in-95">
+      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto rounded-2xl bg-dark-900 border border-dark-750 p-6 shadow-2xl animate-in fade-in zoom-in-95">
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-dark-800">
           <div className="flex items-center space-x-2.5">
             <div className="w-10 h-10 rounded-xl bg-dark-800 border border-dark-750 flex items-center justify-center text-bumeran-400">
@@ -187,6 +199,117 @@ export function SettingsModal({
               <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-gray-500 pointer-events-none">
                 Default: 18 horas
               </span>
+            </div>
+          </div>
+
+          {/* Sectores y Puntos de Venta que Suman Sellos de Visita */}
+          <div className="pt-3 border-t border-dark-800 space-y-2.5">
+            <div>
+              <label className="block text-xs font-bold text-white">
+                Sectores que Suman Sellos de Visita
+              </label>
+              <p className="text-[11px] text-gray-400">
+                Seleccioná qué canales computan sellos de visita al superar el ticket mínimo (los puntos por consumo siempre se acreditan).
+              </p>
+            </div>
+
+            {/* Toggle 1: Salón / Mesas */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-dark-950 border border-dark-800 hover:border-dark-750 transition-colors">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-base">🍽️</span>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-semibold text-gray-200">Mesa / Salón Principal</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                        allowVisitTable ? "bg-emerald-500/20 text-emerald-400" : "bg-dark-800 text-gray-500"
+                      }`}
+                    >
+                      {allowVisitTable ? "Suma Visitas" : "Solo Puntos"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Consumos presenciales en mesa o barra</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllowVisitTable(!allowVisitTable)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  allowVisitTable ? "bg-bumeran-500" : "bg-dark-750"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    allowVisitTable ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Toggle 2: Mostrador / Take Away */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-dark-950 border border-dark-800 hover:border-dark-750 transition-colors">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-base">🛍️</span>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-semibold text-gray-200">Take Away / Mostrador</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                        allowVisitCounter ? "bg-emerald-500/20 text-emerald-400" : "bg-dark-800 text-gray-500"
+                      }`}
+                    >
+                      {allowVisitCounter ? "Suma Visitas" : "Solo Puntos"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Pedidos para llevar despachados en mostrador</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllowVisitCounter(!allowVisitCounter)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  allowVisitCounter ? "bg-bumeran-500" : "bg-dark-750"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    allowVisitCounter ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Toggle 3: Pedidos Delivery */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-dark-950 border border-dark-800 hover:border-dark-750 transition-colors">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-base">🛵</span>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-semibold text-gray-200">Pedidos Delivery</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                        allowVisitDelivery ? "bg-emerald-500/20 text-emerald-400" : "bg-dark-800 text-gray-500"
+                      }`}
+                    >
+                      {allowVisitDelivery ? "Suma Visitas" : "Solo Puntos"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Envíos a domicilio directos o por apps</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllowVisitDelivery(!allowVisitDelivery)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  allowVisitDelivery ? "bg-bumeran-500" : "bg-dark-750"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    allowVisitDelivery ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
           </div>
 

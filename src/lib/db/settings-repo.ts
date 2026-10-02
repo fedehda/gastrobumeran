@@ -3,15 +3,27 @@ import { LoyaltySettings, LoyaltyReward } from "@/types/loyalty";
 
 export function getLoyaltySettings(): LoyaltySettings {
   const db = getDatabase();
-  const row = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as LoyaltySettings;
+  const row = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as Record<string, unknown> | undefined;
   if (!row) {
     db.prepare(`
-      INSERT INTO loyalty_settings (points_earning_rate, points_expiration_days, points_lifetime_days, min_spend_for_visit, visit_cooldown_hours)
-      VALUES (100.0, 90, 365, 1500.0, 18)
+      INSERT INTO loyalty_settings (points_earning_rate, points_expiration_days, points_lifetime_days, min_spend_for_visit, visit_cooldown_hours, allow_visit_table, allow_visit_counter, allow_visit_delivery)
+      VALUES (100.0, 90, 365, 1500.0, 18, 1, 0, 0)
     `).run();
-    return db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as LoyaltySettings;
+    return getLoyaltySettings();
   }
-  return row;
+
+  return {
+    id: Number(row.id),
+    points_earning_rate: Number(row.points_earning_rate),
+    points_expiration_days: Number(row.points_expiration_days),
+    points_lifetime_days: Number(row.points_lifetime_days || 365),
+    min_spend_for_visit: Number(row.min_spend_for_visit),
+    visit_cooldown_hours: Number(row.visit_cooldown_hours),
+    allow_visit_table: row.allow_visit_table !== undefined ? Boolean(row.allow_visit_table) : true,
+    allow_visit_counter: row.allow_visit_counter !== undefined ? Boolean(row.allow_visit_counter) : false,
+    allow_visit_delivery: row.allow_visit_delivery !== undefined ? Boolean(row.allow_visit_delivery) : false,
+    updated_at: String(row.updated_at || new Date().toISOString()),
+  };
 }
 
 export function updateLoyaltySettings(settings: {
@@ -20,6 +32,9 @@ export function updateLoyaltySettings(settings: {
   points_lifetime_days?: number;
   min_spend_for_visit?: number;
   visit_cooldown_hours?: number;
+  allow_visit_table?: boolean;
+  allow_visit_counter?: boolean;
+  allow_visit_delivery?: boolean;
 }): LoyaltySettings {
   const db = getDatabase();
   const current = getLoyaltySettings();
@@ -29,6 +44,9 @@ export function updateLoyaltySettings(settings: {
   const points_lifetime_days = settings.points_lifetime_days ?? current.points_lifetime_days;
   const min_spend_for_visit = settings.min_spend_for_visit ?? current.min_spend_for_visit;
   const visit_cooldown_hours = settings.visit_cooldown_hours ?? current.visit_cooldown_hours;
+  const allow_visit_table = settings.allow_visit_table !== undefined ? (settings.allow_visit_table ? 1 : 0) : (current.allow_visit_table ? 1 : 0);
+  const allow_visit_counter = settings.allow_visit_counter !== undefined ? (settings.allow_visit_counter ? 1 : 0) : (current.allow_visit_counter ? 1 : 0);
+  const allow_visit_delivery = settings.allow_visit_delivery !== undefined ? (settings.allow_visit_delivery ? 1 : 0) : (current.allow_visit_delivery ? 1 : 0);
 
   db.prepare(`
     UPDATE loyalty_settings
@@ -37,9 +55,22 @@ export function updateLoyaltySettings(settings: {
         points_lifetime_days = ?,
         min_spend_for_visit = ?,
         visit_cooldown_hours = ?,
+        allow_visit_table = ?,
+        allow_visit_counter = ?,
+        allow_visit_delivery = ?,
         updated_at = datetime('now')
     WHERE id = ?
-  `).run(points_earning_rate, points_expiration_days, points_lifetime_days, min_spend_for_visit, visit_cooldown_hours, current.id);
+  `).run(
+    points_earning_rate,
+    points_expiration_days,
+    points_lifetime_days,
+    min_spend_for_visit,
+    visit_cooldown_hours,
+    allow_visit_table,
+    allow_visit_counter,
+    allow_visit_delivery,
+    current.id
+  );
 
   return getLoyaltySettings();
 }

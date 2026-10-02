@@ -47,6 +47,9 @@ export default function PosPage() {
     points_lifetime_days: 365,
     min_spend_for_visit: 1500,
     visit_cooldown_hours: 18,
+    allow_visit_table: true,
+    allow_visit_counter: false,
+    allow_visit_delivery: false,
     updated_at: new Date().toISOString(),
   });
 
