@@ -167,6 +167,52 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
     }
   };
 
+  const handleToggleAutoSync = async (enabled: boolean) => {
+    setAutoSync(enabled);
+    try {
+      const res = await fetch("/api/fudo/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: apiKey,
+          api_secret: apiSecret,
+          base_url: baseUrl,
+          auto_sync_enabled: enabled,
+          sync_interval_minutes: syncInterval,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setConfig(updated);
+      }
+    } catch (err) {
+      console.error("Error al persistir autoSync:", err);
+    }
+  };
+
+  const handleIntervalChange = async (newVal: number) => {
+    setSyncInterval(newVal);
+    try {
+      const res = await fetch("/api/fudo/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: apiKey,
+          api_secret: apiSecret,
+          base_url: baseUrl,
+          auto_sync_enabled: autoSync,
+          sync_interval_minutes: newVal,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setConfig(updated);
+      }
+    } catch (err) {
+      console.error("Error al persistir syncInterval:", err);
+    }
+  };
+
   const handleTriggerSync = async () => {
     setIsSyncing(true);
     setSyncResult(null);
@@ -349,7 +395,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                           type="checkbox"
                           id="autoSync"
                           checked={autoSync}
-                          onChange={(e) => setAutoSync(e.target.checked)}
+                          onChange={(e) => handleToggleAutoSync(e.target.checked)}
                           className="w-4 h-4 rounded bg-dark-900 border-dark-700 text-sky-500 focus:ring-sky-500"
                         />
                         <label htmlFor="autoSync" className="text-xs font-medium text-gray-300 cursor-pointer">
@@ -360,7 +406,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                       <div>
                         <select
                           value={syncInterval}
-                          onChange={(e) => setSyncInterval(Number(e.target.value))}
+                          onChange={(e) => handleIntervalChange(Number(e.target.value))}
                           disabled={!autoSync}
                           className="w-full px-2.5 py-1.5 bg-dark-900 border border-dark-700 rounded-lg text-xs text-white disabled:opacity-50"
                         >
@@ -406,7 +452,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                         ) : (
                           <ShieldCheck className="w-3.5 h-3.5" />
                         )}
-                        <span>{isSaving ? "Guardando..." : "Guardar Credenciales"}</span>
+                        <span>{isSaving ? "Guardando..." : "Guardar Configuración"}</span>
                       </button>
                     </div>
                   </form>

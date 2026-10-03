@@ -63,7 +63,7 @@ export function updateFudoConfig(input: {
   const baseUrl = input.base_url !== undefined ? input.base_url.trim() : current.base_url;
   const authUrl = input.auth_url !== undefined ? input.auth_url.trim() : (current.auth_url || "https://auth.fu.do/api");
   const autoSync = input.auto_sync_enabled !== undefined ? (input.auto_sync_enabled ? 1 : 0) : current.auto_sync_enabled ? 1 : 0;
-  const interval = input.sync_interval_minutes !== undefined ? Math.max(5, input.sync_interval_minutes) : current.sync_interval_minutes;
+  const interval = input.sync_interval_minutes !== undefined ? Math.max(1, Number(input.sync_interval_minutes)) : current.sync_interval_minutes;
   const now = new Date().toISOString();
 
   db.prepare(`
