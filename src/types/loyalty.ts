@@ -17,6 +17,7 @@ export interface Customer {
   last_visit_at?: string | null;
   points_expire_at?: string | null; // Timer 1: Inactivity (90 days)
   loyalty_enrolled?: boolean | number; // 1 = participating, 0 = not enrolled / ignored in points
+  welcome_points_awarded?: boolean | number; // 1 = already received welcome bonus, 0 = not yet
   created_at: string;
 }
 
@@ -65,6 +66,8 @@ export interface LoyaltySettings {
   allow_visit_table: boolean; // ¿Mesa / Salón suma visita? Default: true
   allow_visit_counter: boolean; // ¿Mostrador / Take Away suma visita? Default: false
   allow_visit_delivery: boolean; // ¿Delivery suma visita? Default: false
+  welcome_points_enabled?: boolean; // ¿Otorgar puntos de bienvenida al registrarse / afiliarse? Default: false
+  welcome_points_amount?: number; // Cantidad de puntos de bienvenida (ej. 50, 100)
   updated_at: string;
 }
 

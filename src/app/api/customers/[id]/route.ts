@@ -87,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const body = await req.json();
-    const { loyalty_enrolled, creditRetroactive } = body;
+    const { loyalty_enrolled } = body;
 
     if (loyalty_enrolled === undefined) {
       return NextResponse.json(
@@ -96,14 +96,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
-    const result = updateCustomerLoyaltyEnrollment(id, Boolean(loyalty_enrolled), Boolean(creditRetroactive));
+    const result = updateCustomerLoyaltyEnrollment(id, Boolean(loyalty_enrolled));
 
     return NextResponse.json({
       success: true,
       customer: result.customer,
-      retroPointsCredited: result.retroPointsCredited,
+      welcomePointsAwarded: result.welcomePointsAwarded,
       message: result.customer.loyalty_enrolled
-        ? `Comensal adherido con éxito al programa de fidelidad.${result.retroPointsCredited > 0 ? ` Se acreditaron +${result.retroPointsCredited} puntos retroactivos.` : ""}`
+        ? `Comensal adherido con éxito al programa de fidelidad.${result.welcomePointsAwarded > 0 ? ` ¡Se le acreditaron +${result.welcomePointsAwarded} puntos de bienvenida!` : ""}`
         : "Comensal dado de baja del programa de fidelidad (no acumulará puntos).",
     });
   } catch (error: unknown) {

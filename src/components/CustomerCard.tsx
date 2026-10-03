@@ -43,13 +43,11 @@ export function CustomerCard({
   onCustomerUpdated,
 }: CustomerCardProps) {
   const [isClaimingBirthday, setIsClaimingBirthday] = useState(false);
-  const [showEnrollModal, setShowEnrollModal] = useState(false);
-  const [creditRetroactive, setCreditRetroactive] = useState(false);
   const [isUpdatingEnrollment, setIsUpdatingEnrollment] = useState(false);
 
   const isEnrolled = customer.loyalty_enrolled !== 0 && customer.loyalty_enrolled !== false;
 
-  const handleToggleEnrollment = async (enrolled: boolean, retro: boolean = false) => {
+  const handleToggleEnrollment = async (enrolled: boolean) => {
     setIsUpdatingEnrollment(true);
     try {
       const res = await fetch(`/api/customers/${customer.id}`, {
@@ -57,7 +55,6 @@ export function CustomerCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           loyalty_enrolled: enrolled,
-          creditRetroactive: retro,
         }),
       });
       const data = await res.json();
@@ -67,7 +64,6 @@ export function CustomerCard({
       if (onCustomerUpdated) {
         onCustomerUpdated(data.customer, data.message);
       }
-      setShowEnrollModal(false);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Error al actualizar estado");
     } finally {
@@ -163,11 +159,18 @@ export function CustomerCard({
             </div>
           </div>
           <button
-            onClick={() => setShowEnrollModal(true)}
+            onClick={() => handleToggleEnrollment(true)}
+            disabled={isUpdatingEnrollment}
             className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 text-white font-bold text-xs shadow-glow transition-all flex items-center justify-center space-x-1.5 shrink-0"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Adherir a Fidelidad</span>
+            {isUpdatingEnrollment ? (
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>Adherir a Fidelidad</span>
+              </>
+            )}
           </button>
         </div>
       )}
@@ -229,12 +232,18 @@ export function CustomerCard({
             </button>
           ) : (
             <button
-              onClick={() => setShowEnrollModal(true)}
+              onClick={() => handleToggleEnrollment(true)}
               disabled={isUpdatingEnrollment}
               className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 shadow-glow transition-all flex items-center space-x-1"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Adherir</span>
+              {isUpdatingEnrollment ? (
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Adherir</span>
+                </>
+              )}
             </button>
           )}
 
@@ -372,72 +381,6 @@ export function CustomerCard({
           El cliente puede escanear su QR desde su teléfono en este punto de cobro
         </span>
       </div>
-
-      {/* Modal de Adhesión a Fidelidad */}
-      {showEnrollModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="max-w-md w-full rounded-2xl bg-dark-900 border border-dark-750 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center space-x-3 pb-3 border-b border-dark-800">
-              <div className="w-10 h-10 rounded-xl bg-bumeran-500/10 border border-bumeran-500/30 flex items-center justify-center text-bumeran-400">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Adherir a Programa de Fidelidad</h3>
-                <p className="text-xs text-gray-400">{customer.name} (DNI: {customer.document_number})</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-300">
-              Al confirmar, el comensal comenzará a acumular puntos automáticamente en sus próximas visitas y consumos.
-            </p>
-
-            {customer.total_spent > 0 && (
-              <div className="p-3.5 rounded-xl bg-dark-950/80 border border-dark-750 space-y-2">
-                <label className="flex items-start space-x-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={creditRetroactive}
-                    onChange={(e) => setCreditRetroactive(e.target.checked)}
-                    className="mt-0.5 rounded border-dark-700 text-bumeran-500 focus:ring-bumeran-500"
-                  />
-                  <div className="text-xs">
-                    <span className="font-semibold text-white">Reconocer puntos por compras anteriores</span>
-                    <p className="text-gray-400 mt-0.5">
-                      Este comensal tiene <strong>${customer.total_spent.toLocaleString("es-AR")}</strong> facturados previamente. Si marcas esta opción, se emitirán sus puntos de bienvenida equivalentes.
-                    </p>
-                  </div>
-                </label>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end space-x-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowEnrollModal(false)}
-                disabled={isUpdatingEnrollment}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-dark-800 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleEnrollment(true, creditRetroactive)}
-                disabled={isUpdatingEnrollment}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 shadow-glow transition-all flex items-center space-x-1.5"
-              >
-                {isUpdatingEnrollment ? (
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Confirmar Adhesión</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

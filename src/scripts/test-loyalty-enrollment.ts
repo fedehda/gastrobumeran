@@ -101,26 +101,35 @@ async function runEnrollmentTest() {
   }
   console.log("✓ Filtrado por pestañas verificado correctamente.");
 
-  // 4. Adherir comensal reconociendo compras pasadas (retroactive = true)
-  console.log("\n4. Adhiriendo comensal con reconocimiento retroactivo de puntos...");
-  const enrollResult = updateCustomerLoyaltyEnrollment(unenrolledCust.id, true, true);
+  // 4. Configurar puntos de bienvenida (50 puntos) y adherir comensal
+  console.log("\n4. Configurando 50 puntos de bienvenida en loyalty_settings...");
+  db.prepare(`
+    UPDATE loyalty_settings
+    SET welcome_points_enabled = 1, welcome_points_amount = 50
+    WHERE id = 1
+  `).run();
+
+  console.log("Adhiriendo comensal a fidelidad (SIN puntos retroactivos por ventas pasadas)...");
+  const enrollResult = updateCustomerLoyaltyEnrollment(unenrolledCust.id, true);
 
   console.log("Resultado de adhesión:", {
     enrolled: enrollResult.customer.loyalty_enrolled,
     points_balance: enrollResult.customer.points_balance,
-    retroPointsCredited: enrollResult.retroPointsCredited,
+    welcomePointsAwarded: enrollResult.welcomePointsAwarded,
+    welcome_points_awarded: enrollResult.customer.welcome_points_awarded,
   });
 
   if (enrollResult.customer.loyalty_enrolled !== 1) {
     throw new Error("❌ loyalty_enrolled no se actualizó a 1");
   }
-  if (enrollResult.retroPointsCredited <= 0) {
-    throw new Error("❌ No se acreditaron puntos retroactivos por la venta previa de $10.000");
+  // Verificar que NO hubo puntos retroactivos por la venta de $10.000 (habrían sido 100 puntos a $100/punto)
+  if (enrollResult.welcomePointsAwarded !== 50) {
+    throw new Error(`❌ Esperados 50 puntos de bienvenida, obtenidos: ${enrollResult.welcomePointsAwarded}`);
   }
-  if (enrollResult.customer.points_balance !== enrollResult.retroPointsCredited) {
-    throw new Error("❌ El saldo del comensal no coincide con los puntos retroactivos");
+  if (enrollResult.customer.points_balance !== 50) {
+    throw new Error(`❌ Saldo esperado 50 (solo bienvenida), obtenido: ${enrollResult.customer.points_balance}`);
   }
-  console.log(`✓ Adhesión exitosa: +${enrollResult.retroPointsCredited} puntos retroactivos acreditados.`);
+  console.log("✓ Adhesión exitosa: +50 puntos de bienvenida acreditados (cero retroactividad por ventas previas).");
 
   // 5. Procesar nueva venta para el comensal ahora adherido
   console.log("\n5. Procesando nueva venta de $5.000 para el comensal ahora activo...");
@@ -144,9 +153,12 @@ async function runEnrollmentTest() {
   if (saleResult2.visit_added !== true) {
     throw new Error("❌ No se sumó la primera visita para el cliente activo");
   }
+  if (saleResult2.customer.points_balance !== 50 + saleResult2.points_earned) {
+    throw new Error(`❌ Balance total inconsistente: esperado ${50 + saleResult2.points_earned}, obtenido ${saleResult2.customer.points_balance}`);
+  }
   console.log("✓ El cliente ahora acumula puntos y visitas con normalidad.");
 
-  // 6. Pausar / Desactivar fidelidad
+  // 6. Pausar y reactivar fidelidad (Verificar que los puntos de bienvenida son idempotentes y no se duplican)
   console.log("\n6. Pausando fidelidad del comensal (dar de baja de puntos)...");
   const deactivateResult = updateCustomerLoyaltyEnrollment(unenrolledCust.id, false);
   if (deactivateResult.customer.loyalty_enrolled !== 0) {
@@ -154,11 +166,37 @@ async function runEnrollmentTest() {
   }
   console.log("✓ Fidelidad pausada correctamente (loyalty_enrolled = 0).");
 
+  console.log("Reactivando fidelidad (verificando que NO vuelva a recibir puntos de bienvenida)...");
+  const reactivateResult = updateCustomerLoyaltyEnrollment(unenrolledCust.id, true);
+  if (reactivateResult.welcomePointsAwarded !== 0) {
+    throw new Error(`❌ Se otorgaron puntos de bienvenida duplicados: ${reactivateResult.welcomePointsAwarded}`);
+  }
+  if (reactivateResult.customer.points_balance !== saleResult2.customer.points_balance) {
+    throw new Error("❌ El saldo cambió al reactivar la cuenta");
+  }
+  console.log("✓ Idempotencia validada: no se duplicaron puntos de bienvenida.");
+
+  // 7. Probar creación directa de cliente con bienvenida activa
+  console.log("\n7. Creando cliente nuevo directamente adherido con bienvenida...");
+  const directCustDoc = "TEST_OPTIN_002";
+  const directCust = createCustomer({
+    document_number: directCustDoc,
+    name: "Comensal Directo Bienvenida",
+    loyalty_enrolled: 1,
+  });
+  if (directCust.points_balance !== 50) {
+    throw new Error(`❌ El cliente directo no recibió los 50 puntos de bienvenida. Balance: ${directCust.points_balance}`);
+  }
+  if (!directCust.welcome_points_awarded) {
+    throw new Error("❌ welcome_points_awarded no es verdadero en cliente directo");
+  }
+  console.log("✓ Cliente directo creado con 50 puntos de bienvenida.");
+
   // Limpieza final
-  db.prepare("DELETE FROM points_batches WHERE customer_id = ?").run(unenrolledCust.id);
-  db.prepare("DELETE FROM points_history WHERE customer_id = ?").run(unenrolledCust.id);
-  db.prepare("DELETE FROM sales WHERE customer_id = ?").run(unenrolledCust.id);
-  db.prepare("DELETE FROM customers WHERE id = ?").run(unenrolledCust.id);
+  db.prepare("DELETE FROM points_batches WHERE customer_id IN (?, ?)").run(unenrolledCust.id, directCust.id);
+  db.prepare("DELETE FROM points_history WHERE customer_id IN (?, ?)").run(unenrolledCust.id, directCust.id);
+  db.prepare("DELETE FROM sales WHERE customer_id IN (?, ?)").run(unenrolledCust.id, directCust.id);
+  db.prepare("DELETE FROM customers WHERE id IN (?, ?)").run(unenrolledCust.id, directCust.id);
 
   console.log("\n==================================================================");
   console.log("🎉 TODAS LAS PRUEBAS DE OPT-IN / NO ADHERIDOS PASARON CON ÉXITO 🎉");

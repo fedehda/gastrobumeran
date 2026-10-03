@@ -134,19 +134,50 @@ export function createCustomer(data: {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  // Comprobar si corresponde otorgar puntos de bienvenida
+  const settings = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as {
+    welcome_points_enabled: number;
+    welcome_points_amount: number;
+    points_lifetime_days: number;
+    points_expiration_days: number;
+  } | undefined;
+
+  const shouldAwardWelcome = enrolledVal === 1 && Boolean(settings?.welcome_points_enabled) && (settings?.welcome_points_amount || 0) > 0;
+  const welcomePts = shouldAwardWelcome ? Number(settings!.welcome_points_amount) : 0;
+  const welcomeAwarded = shouldAwardWelcome ? 1 : 0;
+
+  const lifetimeDays = settings?.points_lifetime_days || 365;
+  const expirationDays = settings?.points_expiration_days || 90;
+  const newExpirationStr = welcomePts > 0 ? new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString() : null;
+
   db.prepare(`
-    INSERT INTO customers (id, fudo_customer_id, document_number, name, phone, email, birth_date, points_balance, total_spent, visit_count, loyalty_enrolled, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?)
-  `).run(id, cleanFudoId, cleanDoc, cleanName, cleanPhone, cleanEmail, cleanBirthDate, enrolledVal, now);
+    INSERT INTO customers (id, fudo_customer_id, document_number, name, phone, email, birth_date, points_balance, total_spent, visit_count, points_expire_at, loyalty_enrolled, welcome_points_awarded, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
+  `).run(id, cleanFudoId, cleanDoc, cleanName, cleanPhone, cleanEmail, cleanBirthDate, welcomePts, newExpirationStr, enrolledVal, welcomeAwarded, now);
+
+  if (welcomePts > 0) {
+    const batchId = crypto.randomUUID();
+    const historyId = crypto.randomUUID();
+    const batchExpiresAt = new Date(Date.now() + lifetimeDays * 24 * 60 * 60 * 1000).toISOString();
+
+    db.prepare(`
+      INSERT INTO points_batches (id, customer_id, points_earned, points_remaining, expires_at, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?)
+    `).run(batchId, id, welcomePts, welcomePts, batchExpiresAt, now);
+
+    db.prepare(`
+      INSERT INTO points_history (id, customer_id, points, concept, created_at)
+      VALUES (?, ?, ?, '¡Bienvenido al programa de fidelidad! (Puntos de bienvenida)', ?)
+    `).run(historyId, id, welcomePts, now);
+  }
 
   return findCustomerById(id)!;
 }
 
 export function updateCustomerLoyaltyEnrollment(
   customerId: string,
-  enrolled: boolean,
-  creditRetroactivePoints = false
-): { customer: Customer; retroPointsCredited: number } {
+  enrolled: boolean
+): { customer: Customer; welcomePointsAwarded: number } {
   const db = getDatabase();
   const customer = findCustomerById(customerId);
   if (!customer) {
@@ -154,65 +185,46 @@ export function updateCustomerLoyaltyEnrollment(
   }
 
   const enrolledVal = enrolled ? 1 : 0;
-  let retroPointsCredited = 0;
+  let welcomePointsAwarded = 0;
 
   db.exec("BEGIN");
   try {
     db.prepare("UPDATE customers SET loyalty_enrolled = ? WHERE id = ?").run(enrolledVal, customerId);
 
-    // Si se activa y se solicita acreditar puntos retroactivos por ventas anteriores
-    if (enrolled && creditRetroactivePoints) {
+    // Si se activa y no ha recibido previamente puntos de bienvenida (no retroactivo por ventas)
+    if (enrolled && !customer.welcome_points_awarded) {
       const settings = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as {
-        points_earning_rate: number;
-        points_expiration_days: number;
+        welcome_points_enabled: number;
+        welcome_points_amount: number;
         points_lifetime_days: number;
+        points_expiration_days: number;
       } | undefined;
-      const rate = settings?.points_earning_rate || 100;
-      const lifetimeDays = settings?.points_lifetime_days || 365;
-      const expirationDays = settings?.points_expiration_days || 90;
 
-      const salesWithoutPoints = db
-        .prepare("SELECT * FROM sales WHERE customer_id = ? AND status = 'CLOSED'")
-        .all(customerId) as Sale[];
-
-      for (const sale of salesWithoutPoints) {
-        const hasBatch = db.prepare("SELECT id FROM points_batches WHERE sale_id = ?").get(sale.id);
-        if (!hasBatch && sale.total_amount > 0) {
-          const pts = Math.floor(sale.total_amount / Math.max(1, rate));
-          if (pts > 0) {
-            const batchId = crypto.randomUUID();
-            const historyId = crypto.randomUUID();
-            const nowStr = new Date().toISOString();
-            const batchExpiresAt = new Date(Date.now() + lifetimeDays * 24 * 60 * 60 * 1000).toISOString();
-
-            db.prepare(`
-              INSERT INTO points_batches (id, customer_id, sale_id, points_earned, points_remaining, expires_at, status, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
-            `).run(batchId, customerId, sale.id, pts, pts, batchExpiresAt, nowStr);
-
-            db.prepare(`
-              INSERT INTO points_history (id, customer_id, sale_id, points, concept, created_at)
-              VALUES (?, ?, ?, ?, ?, ?)
-            `).run(
-              historyId,
-              customerId,
-              sale.id,
-              pts,
-              `Reconocimiento retroactivo por venta previa #${sale.external_sale_id || sale.id.slice(0, 8)}`,
-              nowStr
-            );
-
-            retroPointsCredited += pts;
-          }
-        }
-      }
-
-      if (retroPointsCredited > 0) {
-        const newBalance = customer.points_balance + retroPointsCredited;
+      const shouldAward = Boolean(settings?.welcome_points_enabled) && (settings?.welcome_points_amount || 0) > 0;
+      if (shouldAward) {
+        welcomePointsAwarded = Number(settings!.welcome_points_amount);
+        const lifetimeDays = settings?.points_lifetime_days || 365;
+        const expirationDays = settings?.points_expiration_days || 90;
+        const nowStr = new Date().toISOString();
+        const batchId = crypto.randomUUID();
+        const historyId = crypto.randomUUID();
+        const batchExpiresAt = new Date(Date.now() + lifetimeDays * 24 * 60 * 60 * 1000).toISOString();
+        const newBalance = customer.points_balance + welcomePointsAwarded;
         const newExpirationStr = new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString();
+
+        db.prepare(`
+          INSERT INTO points_batches (id, customer_id, points_earned, points_remaining, expires_at, status, created_at)
+          VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?)
+        `).run(batchId, customerId, welcomePointsAwarded, welcomePointsAwarded, batchExpiresAt, nowStr);
+
+        db.prepare(`
+          INSERT INTO points_history (id, customer_id, points, concept, created_at)
+          VALUES (?, ?, ?, '¡Bienvenido al programa de fidelidad! (Puntos de bienvenida)', ?)
+        `).run(historyId, customerId, welcomePointsAwarded, nowStr);
+
         db.prepare(`
           UPDATE customers
-          SET points_balance = ?, points_expire_at = ?
+          SET points_balance = ?, points_expire_at = ?, welcome_points_awarded = 1
           WHERE id = ?
         `).run(newBalance, newExpirationStr, customerId);
       }
@@ -226,7 +238,7 @@ export function updateCustomerLoyaltyEnrollment(
 
   return {
     customer: findCustomerById(customerId)!,
-    retroPointsCredited,
+    welcomePointsAwarded,
   };
 }
 

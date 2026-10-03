@@ -22,6 +22,8 @@ export function getLoyaltySettings(): LoyaltySettings {
     allow_visit_table: row.allow_visit_table !== undefined ? Boolean(row.allow_visit_table) : true,
     allow_visit_counter: row.allow_visit_counter !== undefined ? Boolean(row.allow_visit_counter) : false,
     allow_visit_delivery: row.allow_visit_delivery !== undefined ? Boolean(row.allow_visit_delivery) : false,
+    welcome_points_enabled: row.welcome_points_enabled !== undefined ? Boolean(row.welcome_points_enabled) : false,
+    welcome_points_amount: Number(row.welcome_points_amount || 0),
     updated_at: String(row.updated_at || new Date().toISOString()),
   };
 }
@@ -35,6 +37,8 @@ export function updateLoyaltySettings(settings: {
   allow_visit_table?: boolean;
   allow_visit_counter?: boolean;
   allow_visit_delivery?: boolean;
+  welcome_points_enabled?: boolean;
+  welcome_points_amount?: number;
 }): LoyaltySettings {
   const db = getDatabase();
   const current = getLoyaltySettings();
@@ -47,6 +51,8 @@ export function updateLoyaltySettings(settings: {
   const allow_visit_table = settings.allow_visit_table !== undefined ? (settings.allow_visit_table ? 1 : 0) : (current.allow_visit_table ? 1 : 0);
   const allow_visit_counter = settings.allow_visit_counter !== undefined ? (settings.allow_visit_counter ? 1 : 0) : (current.allow_visit_counter ? 1 : 0);
   const allow_visit_delivery = settings.allow_visit_delivery !== undefined ? (settings.allow_visit_delivery ? 1 : 0) : (current.allow_visit_delivery ? 1 : 0);
+  const welcome_points_enabled = settings.welcome_points_enabled !== undefined ? (settings.welcome_points_enabled ? 1 : 0) : (current.welcome_points_enabled ? 1 : 0);
+  const welcome_points_amount = settings.welcome_points_amount !== undefined ? Number(settings.welcome_points_amount) : current.welcome_points_amount;
 
   db.prepare(`
     UPDATE loyalty_settings
@@ -58,6 +64,8 @@ export function updateLoyaltySettings(settings: {
         allow_visit_table = ?,
         allow_visit_counter = ?,
         allow_visit_delivery = ?,
+        welcome_points_enabled = ?,
+        welcome_points_amount = ?,
         updated_at = datetime('now')
     WHERE id = ?
   `).run(
@@ -69,6 +77,8 @@ export function updateLoyaltySettings(settings: {
     allow_visit_table,
     allow_visit_counter,
     allow_visit_delivery,
+    welcome_points_enabled,
+    welcome_points_amount,
     current.id
   );
 

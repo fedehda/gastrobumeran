@@ -54,6 +54,7 @@ function initDatabase(db: DatabaseSync) {
       last_visit_at TEXT,
       points_expire_at TEXT,
       loyalty_enrolled INTEGER NOT NULL DEFAULT 1,
+      welcome_points_awarded INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -120,6 +121,8 @@ function initDatabase(db: DatabaseSync) {
       allow_visit_table INTEGER NOT NULL DEFAULT 1,
       allow_visit_counter INTEGER NOT NULL DEFAULT 0,
       allow_visit_delivery INTEGER NOT NULL DEFAULT 0,
+      welcome_points_enabled INTEGER NOT NULL DEFAULT 0,
+      welcome_points_amount INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -187,6 +190,7 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "customers", "last_birthday_reward_year INTEGER");
   safeAddColumn(db, "customers", "fudo_customer_id TEXT");
   safeAddColumn(db, "customers", "loyalty_enrolled INTEGER NOT NULL DEFAULT 1");
+  safeAddColumn(db, "customers", "welcome_points_awarded INTEGER NOT NULL DEFAULT 0");
   try {
     db.exec("CREATE INDEX IF NOT EXISTS idx_customers_enrolled ON customers(loyalty_enrolled);");
   } catch {
@@ -199,6 +203,8 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "loyalty_settings", "allow_visit_table INTEGER NOT NULL DEFAULT 1");
   safeAddColumn(db, "loyalty_settings", "allow_visit_counter INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "loyalty_settings", "allow_visit_delivery INTEGER NOT NULL DEFAULT 0");
+  safeAddColumn(db, "loyalty_settings", "welcome_points_enabled INTEGER NOT NULL DEFAULT 0");
+  safeAddColumn(db, "loyalty_settings", "welcome_points_amount INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "fudo_config", "auth_url TEXT NOT NULL DEFAULT 'https://auth.fu.do/api'");
 
   // Seed default settings if none exists

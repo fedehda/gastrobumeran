@@ -51,6 +51,8 @@ export default function PosPage() {
     allow_visit_table: true,
     allow_visit_counter: false,
     allow_visit_delivery: false,
+    welcome_points_enabled: false,
+    welcome_points_amount: 0,
     updated_at: new Date().toISOString(),
   });
 
