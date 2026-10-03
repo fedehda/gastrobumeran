@@ -27,6 +27,7 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
   const [email, setEmail] = useState("");
   const [birthDay, setBirthDay] = useState("");
   const [birthMonth, setBirthMonth] = useState("");
+  const [loyaltyEnrolled, setLoyaltyEnrolled] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -53,6 +54,7 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
           phone: phone.trim() || undefined,
           email: email.trim() || undefined,
           birth_date: formattedBirthDate,
+          loyalty_enrolled: loyaltyEnrolled,
         }),
       });
 
@@ -195,6 +197,20 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-dark-950/60 border border-dark-800">
+            <label className="flex items-center space-x-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={loyaltyEnrolled}
+                onChange={(e) => setLoyaltyEnrolled(e.target.checked)}
+                className="rounded border-dark-700 text-bumeran-500 focus:ring-bumeran-500"
+              />
+              <span className="text-xs font-semibold text-gray-200">
+                Adherir al programa de fidelidad (sumar puntos por consumos)
+              </span>
+            </label>
           </div>
 
           <div className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-bumeran-500/10 border border-bumeran-500/20 text-bumeran-300 text-[11px]">

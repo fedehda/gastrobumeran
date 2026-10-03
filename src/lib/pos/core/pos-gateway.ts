@@ -99,6 +99,7 @@ export class PosGateway {
             phone: pc.phone,
             email: pc.email,
             birth_date: pc.birthDate,
+            loyalty_enrolled: 0,
           });
           importedCount++;
         }
@@ -302,6 +303,7 @@ export class PosGateway {
               phone: fetched.phone || sale.customer?.phone,
               email: fetched.email,
               birth_date: fetched.birthDate,
+              loyalty_enrolled: 0,
             });
           }
         }
@@ -320,6 +322,7 @@ export class PosGateway {
           document_number: docNumber,
           name: sale.customer.name || `Comensal #${docNumber}`,
           phone: sale.customer.phone,
+          loyalty_enrolled: 0,
         });
       }
     }
@@ -341,6 +344,7 @@ export class PosGateway {
     });
 
     if (result.success) {
+      const hasPoints = (result.points_earned ?? 0) > 0;
       posEventBus.emitNotification({
         id: `sale-${sale.externalSaleId}-${Date.now()}`,
         type: "SALE_INGESTED",
@@ -350,7 +354,9 @@ export class PosGateway {
         pointsEarned: result.points_earned,
         totalAmount: sale.totalAmount,
         customerName: customer.name,
-        message: `¡Venta de $${sale.totalAmount.toLocaleString("es-AR")} acreditada a ${customer.name} (+${result.points_earned} pts)!`,
+        message: hasPoints
+          ? `¡Venta de $${sale.totalAmount.toLocaleString("es-AR")} acreditada a ${customer.name} (+${result.points_earned} pts)!`
+          : `Venta de $${sale.totalAmount.toLocaleString("es-AR")} registrada para ${customer.name} (No adherido a fidelidad)`,
       });
 
       return {

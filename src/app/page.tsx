@@ -55,6 +55,7 @@ export default function PosPage() {
   });
 
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([]);
+  const [customerTab, setCustomerTab] = useState<"active" | "unenrolled" | "all">("active");
   const [customerDetail, setCustomerDetail] = useState<CustomerDetailState | null>(null);
   const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -153,7 +154,7 @@ export default function PosPage() {
       const [resMetrics, resSettings, resCustomers] = await Promise.all([
         fetch("/api/pos/metrics").then((r) => r.json()),
         fetch("/api/settings").then((r) => r.json()),
-        fetch("/api/customers?limit=6").then((r) => r.json()),
+        fetch(`/api/customers?limit=9&filter=${customerTab}`).then((r) => r.json()),
       ]);
 
       if (resMetrics.success) setMetrics(resMetrics.metrics);
@@ -171,7 +172,7 @@ export default function PosPage() {
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [customerTab]);
 
   // Initial load
   useEffect(() => {
@@ -181,7 +182,7 @@ export default function PosPage() {
         const [resMetrics, resSettings, resCustomers] = await Promise.all([
           fetch("/api/pos/metrics").then((r) => r.json()),
           fetch("/api/settings").then((r) => r.json()),
-          fetch("/api/customers?limit=6").then((r) => r.json()),
+          fetch(`/api/customers?limit=9&filter=active`).then((r) => r.json()),
         ]);
 
         if (!isMounted) return;
@@ -199,6 +200,18 @@ export default function PosPage() {
       isMounted = false;
     };
   }, []);
+
+  // Update customers when tab changes
+  useEffect(() => {
+    fetch(`/api/customers?limit=9&filter=${customerTab}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setRecentCustomers(data.customers);
+        }
+      })
+      .catch((err) => console.error("Error loading tab customers:", err));
+  }, [customerTab]);
 
   // Auto-refresh when background auto-sync detects new sales or customers
   useEffect(() => {
@@ -368,6 +381,11 @@ export default function PosPage() {
               birthdayStatus={customerDetail.birthdayStatus}
               onClearCustomer={() => setCustomerDetail(null)}
               onRedeemBirthday={handleRedeemBirthday}
+              onCustomerUpdated={(updatedCustomer, message) => {
+                showToast(message, "success");
+                selectCustomer(updatedCustomer);
+                refreshData();
+              }}
             />
 
             {/* Split layout: Sale Form & History on Left, Rewards on Right */}
@@ -417,37 +435,101 @@ export default function PosPage() {
                 Ingresa el DNI, Teléfono o Nombre del comensal arriba para acumular puntos por consumo, sellar su visita o canjear recompensas del menú. También puedes importar lotes de ventas vía CSV desde la barra superior.
               </p>
 
-              {/* Quick Comensales Frecuentes Chips */}
-              {recentCustomers.length > 0 && (
-                <div className="max-w-2xl mx-auto">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    Comensales Recientes (Clic rápido para seleccionar en caja):
+              {/* Quick Comensales Frecuentes con Filtro por Pestañas */}
+              <div className="max-w-3xl mx-auto">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-3">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Comensales en Sistema:
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                    {recentCustomers.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => selectCustomer(c)}
-                        className="p-3 rounded-xl bg-dark-900 hover:bg-dark-850 border border-dark-750 hover:border-bumeran-500/50 text-left transition-all group flex items-center justify-between"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-white group-hover:text-bumeran-400 transition-colors">
-                            {c.name}
-                          </div>
-                          <div className="text-[11px] text-gray-400">
-                            DNI: {c.document_number}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-bumeran-500/10 text-bumeran-400 text-[10px] font-bold">
-                            {c.points_balance} pts
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+
+                  {/* Tabs Selector */}
+                  <div className="flex items-center p-1 rounded-xl bg-dark-950/80 border border-dark-800 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setCustomerTab("active")}
+                      className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+                        customerTab === "active"
+                          ? "bg-bumeran-500 text-white shadow-glow"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Activos en Fidelidad
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomerTab("unenrolled")}
+                      className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+                        customerTab === "unenrolled"
+                          ? "bg-amber-500 text-white shadow-glow"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      No Adheridos (Fudo)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomerTab("all")}
+                      className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+                        customerTab === "all"
+                          ? "bg-dark-800 text-white border border-dark-700"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Todos
+                    </button>
                   </div>
                 </div>
-              )}
+
+                {recentCustomers.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {recentCustomers.map((c) => {
+                      const isEnrolled = c.loyalty_enrolled !== 0 && c.loyalty_enrolled !== false;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => selectCustomer(c)}
+                          className="p-3 rounded-xl bg-dark-900 hover:bg-dark-850 border border-dark-750 hover:border-bumeran-500/50 text-left transition-all group flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center space-x-1.5">
+                              <span className="text-xs font-bold text-white group-hover:text-bumeran-400 transition-colors">
+                                {c.name}
+                              </span>
+                              {!isEnrolled && (
+                                <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                  No Adherido
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-gray-400 mt-0.5">
+                              DNI: {c.document_number}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {isEnrolled ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-bumeran-500/10 text-bumeran-400 text-[10px] font-bold">
+                                {c.points_balance} pts
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400 text-[10px] font-medium">
+                                0 pts
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-xl bg-dark-950/40 border border-dark-800 text-xs text-gray-500 text-center">
+                    {customerTab === "unenrolled"
+                      ? "No hay comensales pendientes de adhesión. Todos los comensales registrados están activos en el programa."
+                      : customerTab === "active"
+                      ? "Aún no hay comensales activos en fidelidad. Registra uno con el botón '+ Nuevo' o búscalo por DNI."
+                      : "No se encontraron comensales registrados en el sistema."}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Explanatory cards of Hybrid Core Engine */}

@@ -64,19 +64,44 @@ export function linkFudoCustomerId(customerId: string, fudoCustomerId: string): 
   linkCustomerPosId(customerId, "FUDO", fudoCustomerId);
 }
 
-export function searchCustomers(query: string, limit = 10): Customer[] {
+export function searchCustomers(
+  query: string,
+  limit = 10,
+  filter: "active" | "unenrolled" | "all" = "all"
+): Customer[] {
   const db = getDatabase();
   const clean = query.trim();
-  if (!clean) {
-    return db.prepare("SELECT * FROM customers ORDER BY points_balance DESC LIMIT ?").all(limit) as Customer[];
+
+  let filterClause = "";
+  if (filter === "active") {
+    filterClause = "loyalty_enrolled = 1";
+  } else if (filter === "unenrolled") {
+    filterClause = "loyalty_enrolled = 0";
   }
+
+  if (!clean) {
+    if (filterClause) {
+      return db
+        .prepare(`SELECT * FROM customers WHERE ${filterClause} ORDER BY points_balance DESC, created_at DESC LIMIT ?`)
+        .all(limit) as Customer[];
+    }
+    return db
+      .prepare("SELECT * FROM customers ORDER BY points_balance DESC, created_at DESC LIMIT ?")
+      .all(limit) as Customer[];
+  }
+
   const pattern = `%${clean}%`;
-  return db.prepare(`
-    SELECT * FROM customers
-    WHERE document_number LIKE ? OR phone LIKE ? OR name LIKE ?
-    ORDER BY points_balance DESC
-    LIMIT ?
-  `).all(pattern, pattern, pattern, limit) as Customer[];
+  const baseWhere = "(document_number LIKE ? OR phone LIKE ? OR name LIKE ?)";
+  const finalWhere = filterClause ? `${filterClause} AND ${baseWhere}` : baseWhere;
+
+  return db
+    .prepare(`
+      SELECT * FROM customers
+      WHERE ${finalWhere}
+      ORDER BY points_balance DESC
+      LIMIT ?
+    `)
+    .all(pattern, pattern, pattern, limit) as Customer[];
 }
 
 export function createCustomer(data: {
@@ -86,6 +111,7 @@ export function createCustomer(data: {
   email?: string | null;
   birth_date?: string | null;
   fudo_customer_id?: string | null;
+  loyalty_enrolled?: boolean | number;
 }): Customer {
   const db = getDatabase();
   const cleanDoc = data.document_number.trim();
@@ -94,6 +120,7 @@ export function createCustomer(data: {
   const cleanEmail = data.email ? data.email.trim() : null;
   const cleanBirthDate = data.birth_date ? data.birth_date.trim() : null;
   const cleanFudoId = data.fudo_customer_id ? data.fudo_customer_id.trim() : null;
+  const enrolledVal = data.loyalty_enrolled !== undefined ? (data.loyalty_enrolled ? 1 : 0) : 1;
 
   const existing = findCustomerByDocument(cleanDoc);
   if (existing) {
@@ -108,11 +135,99 @@ export function createCustomer(data: {
   const now = new Date().toISOString();
 
   db.prepare(`
-    INSERT INTO customers (id, fudo_customer_id, document_number, name, phone, email, birth_date, points_balance, total_spent, visit_count, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
-  `).run(id, cleanFudoId, cleanDoc, cleanName, cleanPhone, cleanEmail, cleanBirthDate, now);
+    INSERT INTO customers (id, fudo_customer_id, document_number, name, phone, email, birth_date, points_balance, total_spent, visit_count, loyalty_enrolled, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?)
+  `).run(id, cleanFudoId, cleanDoc, cleanName, cleanPhone, cleanEmail, cleanBirthDate, enrolledVal, now);
 
   return findCustomerById(id)!;
+}
+
+export function updateCustomerLoyaltyEnrollment(
+  customerId: string,
+  enrolled: boolean,
+  creditRetroactivePoints = false
+): { customer: Customer; retroPointsCredited: number } {
+  const db = getDatabase();
+  const customer = findCustomerById(customerId);
+  if (!customer) {
+    throw new Error(`Cliente no encontrado: ${customerId}`);
+  }
+
+  const enrolledVal = enrolled ? 1 : 0;
+  let retroPointsCredited = 0;
+
+  db.exec("BEGIN");
+  try {
+    db.prepare("UPDATE customers SET loyalty_enrolled = ? WHERE id = ?").run(enrolledVal, customerId);
+
+    // Si se activa y se solicita acreditar puntos retroactivos por ventas anteriores
+    if (enrolled && creditRetroactivePoints) {
+      const settings = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as {
+        points_earning_rate: number;
+        points_expiration_days: number;
+        points_lifetime_days: number;
+      } | undefined;
+      const rate = settings?.points_earning_rate || 100;
+      const lifetimeDays = settings?.points_lifetime_days || 365;
+      const expirationDays = settings?.points_expiration_days || 90;
+
+      const salesWithoutPoints = db
+        .prepare("SELECT * FROM sales WHERE customer_id = ? AND status = 'CLOSED'")
+        .all(customerId) as Sale[];
+
+      for (const sale of salesWithoutPoints) {
+        const hasBatch = db.prepare("SELECT id FROM points_batches WHERE sale_id = ?").get(sale.id);
+        if (!hasBatch && sale.total_amount > 0) {
+          const pts = Math.floor(sale.total_amount / Math.max(1, rate));
+          if (pts > 0) {
+            const batchId = crypto.randomUUID();
+            const historyId = crypto.randomUUID();
+            const nowStr = new Date().toISOString();
+            const batchExpiresAt = new Date(Date.now() + lifetimeDays * 24 * 60 * 60 * 1000).toISOString();
+
+            db.prepare(`
+              INSERT INTO points_batches (id, customer_id, sale_id, points_earned, points_remaining, expires_at, status, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+            `).run(batchId, customerId, sale.id, pts, pts, batchExpiresAt, nowStr);
+
+            db.prepare(`
+              INSERT INTO points_history (id, customer_id, sale_id, points, concept, created_at)
+              VALUES (?, ?, ?, ?, ?, ?)
+            `).run(
+              historyId,
+              customerId,
+              sale.id,
+              pts,
+              `Reconocimiento retroactivo por venta previa #${sale.external_sale_id || sale.id.slice(0, 8)}`,
+              nowStr
+            );
+
+            retroPointsCredited += pts;
+          }
+        }
+      }
+
+      if (retroPointsCredited > 0) {
+        const newBalance = customer.points_balance + retroPointsCredited;
+        const newExpirationStr = new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString();
+        db.prepare(`
+          UPDATE customers
+          SET points_balance = ?, points_expire_at = ?
+          WHERE id = ?
+        `).run(newBalance, newExpirationStr, customerId);
+      }
+    }
+
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+
+  return {
+    customer: findCustomerById(customerId)!,
+    retroPointsCredited,
+  };
 }
 
 export function getCustomerPointsHistory(customerId: string, limit = 20): PointsHistory[] {

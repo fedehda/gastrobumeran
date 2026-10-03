@@ -11,8 +11,13 @@ export async function GET(req: NextRequest) {
     else if (cleanQuery.startsWith("GASTRO:CARD:")) cleanQuery = cleanQuery.replace("GASTRO:CARD:", "").trim();
     else if (cleanQuery.startsWith("GASTRO:")) cleanQuery = cleanQuery.replace("GASTRO:", "").trim();
     const limit = parseInt(searchParams.get("limit") || "15", 10);
+    const rawFilter = searchParams.get("filter") || "";
+    let filter: "active" | "unenrolled" | "all" = "all";
+    if (rawFilter === "active") filter = "active";
+    else if (rawFilter === "unenrolled") filter = "unenrolled";
+    else if (!cleanQuery && !rawFilter) filter = "active";
 
-    const customers = searchCustomers(cleanQuery, limit);
+    const customers = searchCustomers(cleanQuery, limit, filter);
     return NextResponse.json({ success: true, customers });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al buscar clientes";
@@ -23,7 +28,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { document_number, name, phone, email, birth_date } = body;
+    const { document_number, name, phone, email, birth_date, loyalty_enrolled } = body;
 
     if (!document_number || !name) {
       return NextResponse.json(
@@ -46,6 +51,7 @@ export async function POST(req: NextRequest) {
       phone,
       email,
       birth_date,
+      loyalty_enrolled: loyalty_enrolled !== undefined ? (loyalty_enrolled ? 1 : 0) : 1,
     });
 
     // Sincronización proactiva bidireccional con el sistema POS activo (vía POS Gateway)

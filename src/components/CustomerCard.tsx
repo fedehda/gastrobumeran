@@ -11,9 +11,12 @@ import {
   AlertTriangle,
   ShieldCheck,
   UserCheck,
+  UserX,
+  Sparkles,
   X,
   Cake,
   Gift,
+  CheckCircle,
 } from "lucide-react";
 import { Customer, BirthdayStatus } from "@/types/loyalty";
 import { formatBirthdayDisplay } from "@/lib/loyalty/date-utils";
@@ -26,6 +29,7 @@ interface CustomerCardProps {
   birthdayStatus?: BirthdayStatus;
   onClearCustomer: () => void;
   onRedeemBirthday?: () => Promise<void>;
+  onCustomerUpdated?: (customer: Customer, message: string) => void;
 }
 
 export function CustomerCard({
@@ -36,8 +40,40 @@ export function CustomerCard({
   birthdayStatus,
   onClearCustomer,
   onRedeemBirthday,
+  onCustomerUpdated,
 }: CustomerCardProps) {
   const [isClaimingBirthday, setIsClaimingBirthday] = useState(false);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [creditRetroactive, setCreditRetroactive] = useState(false);
+  const [isUpdatingEnrollment, setIsUpdatingEnrollment] = useState(false);
+
+  const isEnrolled = customer.loyalty_enrolled !== 0 && customer.loyalty_enrolled !== false;
+
+  const handleToggleEnrollment = async (enrolled: boolean, retro: boolean = false) => {
+    setIsUpdatingEnrollment(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          loyalty_enrolled: enrolled,
+          creditRetroactive: retro,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Error al actualizar estado");
+      }
+      if (onCustomerUpdated) {
+        onCustomerUpdated(data.customer, data.message);
+      }
+      setShowEnrollModal(false);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Error al actualizar estado");
+    } finally {
+      setIsUpdatingEnrollment(false);
+    }
+  };
 
   const formatExpiration = (dateStr?: string | null) => {
     if (!dateStr) return "Sin consumos aún";
@@ -107,7 +143,36 @@ export function CustomerCard({
         </div>
       )}
 
-      {/* Top row: Customer identity & close */}
+      {/* Non-enrolled notice banner */}
+      {!isEnrolled && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0 text-lg">
+              <UserX className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-sm text-white">Comensal No Adherido al Programa</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider border border-amber-500/30">
+                  Sin Acumulación
+                </span>
+              </div>
+              <p className="text-xs text-gray-300 mt-0.5">
+                Sus consumos se registran para estadísticas, pero no acumula puntos ni sella visitas.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowEnrollModal(true)}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 text-white font-bold text-xs shadow-glow transition-all flex items-center justify-center space-x-1.5 shrink-0"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Adherir a Fidelidad</span>
+          </button>
+        </div>
+      )}
+
+      {/* Top row: Customer identity & actions */}
       <div className="flex items-start justify-between pb-3 border-b border-dark-800">
         <div className="flex items-center space-x-3.5">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-bumeran-600 to-amber-500 flex items-center justify-center text-white font-extrabold text-xl shadow-glow">
@@ -116,9 +181,15 @@ export function CustomerCard({
           <div>
             <div className="flex items-center space-x-2">
               <h2 className="text-lg font-bold text-white tracking-tight">{customer.name}</h2>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center">
-                <UserCheck className="w-3 h-3 mr-1" /> Fidelizado
-              </span>
+              {isEnrolled ? (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center">
+                  <UserCheck className="w-3 h-3 mr-1" /> Fidelizado
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center">
+                  <UserX className="w-3 h-3 mr-1" /> No Adherido
+                </span>
+              )}
               {customer.birth_date && (
                 <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-medium flex items-center">
                   <Cake className="w-3 h-3 mr-1" />
@@ -142,13 +213,39 @@ export function CustomerCard({
           </div>
         </div>
 
-        <button
-          onClick={onClearCustomer}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 border border-dark-750 transition-colors"
-          title="Cambiar cliente"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex items-center space-x-2">
+          {isEnrolled ? (
+            <button
+              onClick={() => {
+                if (window.confirm(`¿Deseas pausar/desactivar la participación de ${customer.name} en el programa de fidelidad? (Dejará de sumar puntos).`)) {
+                  handleToggleEnrollment(false);
+                }
+              }}
+              disabled={isUpdatingEnrollment}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-amber-300 hover:bg-dark-800 border border-dark-750 transition-colors"
+              title="Pausar fidelidad"
+            >
+              Pausar Fidelidad
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowEnrollModal(true)}
+              disabled={isUpdatingEnrollment}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 shadow-glow transition-all flex items-center space-x-1"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Adherir</span>
+            </button>
+          )}
+
+          <button
+            onClick={onClearCustomer}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 border border-dark-750 transition-colors"
+            title="Cambiar cliente"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Loyalty Metrics Scorecards Grid */}
@@ -275,6 +372,72 @@ export function CustomerCard({
           El cliente puede escanear su QR desde su teléfono en este punto de cobro
         </span>
       </div>
+
+      {/* Modal de Adhesión a Fidelidad */}
+      {showEnrollModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="max-w-md w-full rounded-2xl bg-dark-900 border border-dark-750 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 pb-3 border-b border-dark-800">
+              <div className="w-10 h-10 rounded-xl bg-bumeran-500/10 border border-bumeran-500/30 flex items-center justify-center text-bumeran-400">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Adherir a Programa de Fidelidad</h3>
+                <p className="text-xs text-gray-400">{customer.name} (DNI: {customer.document_number})</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-300">
+              Al confirmar, el comensal comenzará a acumular puntos automáticamente en sus próximas visitas y consumos.
+            </p>
+
+            {customer.total_spent > 0 && (
+              <div className="p-3.5 rounded-xl bg-dark-950/80 border border-dark-750 space-y-2">
+                <label className="flex items-start space-x-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={creditRetroactive}
+                    onChange={(e) => setCreditRetroactive(e.target.checked)}
+                    className="mt-0.5 rounded border-dark-700 text-bumeran-500 focus:ring-bumeran-500"
+                  />
+                  <div className="text-xs">
+                    <span className="font-semibold text-white">Reconocer puntos por compras anteriores</span>
+                    <p className="text-gray-400 mt-0.5">
+                      Este comensal tiene <strong>${customer.total_spent.toLocaleString("es-AR")}</strong> facturados previamente. Si marcas esta opción, se emitirán sus puntos de bienvenida equivalentes.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEnrollModal(false)}
+                disabled={isUpdatingEnrollment}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-dark-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleEnrollment(true, creditRetroactive)}
+                disabled={isUpdatingEnrollment}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 shadow-glow transition-all flex items-center space-x-1.5"
+              >
+                {isUpdatingEnrollment ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Confirmar Adhesión</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

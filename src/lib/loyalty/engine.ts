@@ -79,9 +79,12 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
     }
   }
 
+  // 2.1 Check Loyalty Program Enrollment
+  const isEnrolled = customer.loyalty_enrolled !== 0 && customer.loyalty_enrolled !== false;
+
   // 3. Eje Puntos (RF-04)
   const earningRate = Math.max(1, settings.points_earning_rate);
-  const pointsEarned = Math.floor(input.totalAmount / earningRate);
+  const pointsEarned = isEnrolled ? Math.floor(input.totalAmount / earningRate) : 0;
 
   // 4. Eje Visitas y Antifraude Cooldown (RF-04)
   // Regla de Negocio: Se evalúa dinámicamente según la configuración de sectores (Salón, Mostrador, Delivery) si computa visita.
@@ -102,7 +105,7 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   }
 
   let visitAdded = false;
-  if (sectorAllowsVisit && input.totalAmount >= settings.min_spend_for_visit) {
+  if (isEnrolled && sectorAllowsVisit && input.totalAmount >= settings.min_spend_for_visit) {
     if (!customer.last_visit_at) {
       visitAdded = true;
     } else {
@@ -119,7 +122,7 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   // 5. Timer 1: Inactividad Rolling a 90 días (RF-05 Revisado)
   const expirationDays = settings.points_expiration_days || 90;
   const newExpirationObj = new Date(saleDateObj.getTime() + expirationDays * 24 * 60 * 60 * 1000);
-  const newExpirationStr = newExpirationObj.toISOString();
+  const newExpirationStr = isEnrolled ? newExpirationObj.toISOString() : (customer.points_expire_at || null);
 
   // 6. Timer 2: Antigüedad de Lote FIFO (365 días configurable)
   const lifetimeDays = settings.points_lifetime_days || 365;
@@ -131,7 +134,10 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   const batchId = crypto.randomUUID();
   const nowStr = new Date().toISOString();
   const source = input.source || "MANUAL";
-  const conceptText = input.concept || `Consumo ${source === "MANUAL" ? "Caja" : source} ($${input.totalAmount.toLocaleString("es-AR")}) +${pointsEarned} pts`;
+  const defaultConcept = isEnrolled
+    ? `Consumo ${source === "MANUAL" ? "Caja" : source} ($${input.totalAmount.toLocaleString("es-AR")}) +${pointsEarned} pts`
+    : `Consumo ${source === "MANUAL" ? "Caja" : source} ($${input.totalAmount.toLocaleString("es-AR")}) [No Adherido]`;
+  const conceptText = input.concept || defaultConcept;
 
   db.exec("BEGIN");
   try {
@@ -218,9 +224,11 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       points_expire_at: newExpirationStr,
       batch_expires_at: batchExpiresAt,
       points_history_entry: historyEntry,
-      message: `¡Venta registrada con éxito! Sumaste ${pointsEarned} puntos${
-        visitAdded ? " y 1 visita" : !sectorAllowsVisit ? ` (${isCounter ? "mostrador" : isDelivery ? "delivery" : "salón"} no suma visita según configuración)` : ""
-      }. Vencimiento rolling renovado a ${expirationDays} días. Lote FIFO activo por ${lifetimeDays} días.`,
+      message: isEnrolled
+        ? `¡Venta registrada con éxito! Sumaste ${pointsEarned} puntos${
+            visitAdded ? " y 1 visita" : !sectorAllowsVisit ? ` (${isCounter ? "mostrador" : isDelivery ? "delivery" : "salón"} no suma visita según configuración)` : ""
+          }. Vencimiento rolling renovado a ${expirationDays} días. Lote FIFO activo por ${lifetimeDays} días.`
+        : `¡Venta registrada con éxito! El comensal no está adherido a fidelidad (0 puntos acreditados).`,
     };
   } catch (err: unknown) {
     db.exec("ROLLBACK");

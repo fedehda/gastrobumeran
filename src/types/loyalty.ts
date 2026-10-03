@@ -16,6 +16,7 @@ export interface Customer {
   visit_count: number;
   last_visit_at?: string | null;
   points_expire_at?: string | null; // Timer 1: Inactivity (90 days)
+  loyalty_enrolled?: boolean | number; // 1 = participating, 0 = not enrolled / ignored in points
   created_at: string;
 }
 
@@ -149,7 +150,7 @@ export interface LoyaltyTransactionResult {
   sale?: Sale;
   points_earned: number;
   visit_added: boolean;
-  points_expire_at: string;
+  points_expire_at?: string | null;
   batch_expires_at?: string;
   points_history_entry: PointsHistory;
   message?: string;

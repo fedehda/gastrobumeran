@@ -21,8 +21,9 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
   const amount = parseFloat(amountStr) || 0;
 
   // Real-time calculated points
+  const isEnrolled = customer.loyalty_enrolled !== 0 && customer.loyalty_enrolled !== false;
   const pointsRate = Math.max(1, settings.points_earning_rate);
-  const projectedPoints = Math.floor(amount / pointsRate);
+  const projectedPoints = isEnrolled ? Math.floor(amount / pointsRate) : 0;
 
   // Concept & Sale type resolution
   const isCounter = concept.includes("Mostrador") || concept.includes("Take Away");
@@ -167,31 +168,45 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
 
         {/* Live Calculation Box */}
         {amount > 0 && (
-          <div className="p-3.5 rounded-xl bg-gradient-to-r from-bumeran-950/40 via-dark-950 to-dark-950 border border-bumeran-500/30 flex items-center justify-between text-xs">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center text-bumeran-400 font-bold text-sm">
-                <Award className="w-4 h-4 mr-1 text-bumeran-500" />
-                +{projectedPoints} Puntos a acreditar
+          isEnrolled ? (
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-bumeran-950/40 via-dark-950 to-dark-950 border border-bumeran-500/30 flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center text-bumeran-400 font-bold text-sm">
+                  <Award className="w-4 h-4 mr-1 text-bumeran-500" />
+                  +{projectedPoints} Puntos a acreditar
+                </div>
+                <div className="h-4 w-px bg-dark-800" />
+                <div className="flex items-center text-gray-300">
+                  {!sectorAllowsVisit ? (
+                    <span className="text-amber-400/90 font-medium">
+                      {isCounter ? "Mostrador" : isDelivery ? "Delivery" : "Salón"} no suma visita (según reglas)
+                    </span>
+                  ) : willAddVisit ? (
+                    <span className="text-emerald-400 font-semibold">✓ Sumará +1 Visita</span>
+                  ) : isCooldownActive ? (
+                    <span className="text-gray-400 italic">Cooldown 18hs activo (no suma visita repetida)</span>
+                  ) : (
+                    <span className="text-gray-500">Mínimo para visita: ${settings.min_spend_for_visit.toLocaleString("es-AR")}</span>
+                  )}
+                </div>
               </div>
-              <div className="h-4 w-px bg-dark-800" />
-              <div className="flex items-center text-gray-300">
-                {!sectorAllowsVisit ? (
-                  <span className="text-amber-400/90 font-medium">
-                    {isCounter ? "Mostrador" : isDelivery ? "Delivery" : "Salón"} no suma visita (según reglas)
-                  </span>
-                ) : willAddVisit ? (
-                  <span className="text-emerald-400 font-semibold">✓ Sumará +1 Visita</span>
-                ) : isCooldownActive ? (
-                  <span className="text-gray-400 italic">Cooldown 18hs activo (no suma visita repetida)</span>
-                ) : (
-                  <span className="text-gray-500">Mínimo para visita: ${settings.min_spend_for_visit.toLocaleString("es-AR")}</span>
-                )}
-              </div>
+              <span className="text-emerald-400 font-medium">
+                Vencimiento +90 días
+              </span>
             </div>
-            <span className="text-emerald-400 font-medium">
-              Vencimiento +90 días
-            </span>
-          </div>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-2 text-amber-300">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>
+                  <strong>Comensal no adherido:</strong> Esta venta se registrará contablemente pero <strong>no sumará puntos ni visitas</strong>.
+                </span>
+              </div>
+              <span className="text-amber-400 font-bold shrink-0 ml-2">
+                +0 pts
+              </span>
+            </div>
+          )
         )}
 
         {/* Error message */}

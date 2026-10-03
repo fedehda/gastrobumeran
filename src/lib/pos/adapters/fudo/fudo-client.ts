@@ -8,14 +8,23 @@ import {
 } from "./types";
 
 export class FudoClient {
-  private config: FudoConfig;
+  private customConfig?: FudoConfig;
+  private _cachedConfig?: FudoConfig;
 
   constructor(customConfig?: FudoConfig) {
-    this.config = customConfig || getFudoConfig();
+    this.customConfig = customConfig;
   }
 
   public getConfig(): FudoConfig {
-    return this.config;
+    if (this.customConfig) return this.customConfig;
+    if (!this._cachedConfig) {
+      this._cachedConfig = getFudoConfig();
+    }
+    return this._cachedConfig;
+  }
+
+  private get config(): FudoConfig {
+    return this.getConfig();
   }
 
   public isSandbox(): boolean {

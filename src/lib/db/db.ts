@@ -29,6 +29,12 @@ function safeAddColumn(db: DatabaseSync, table: string, columnDef: string) {
 }
 
 function initDatabase(db: DatabaseSync) {
+  db.exec("PRAGMA busy_timeout = 10000;");
+  try {
+    db.exec("PRAGMA journal_mode = WAL;");
+  } catch {
+    // Safe to ignore if WAL is already active or connection is temporarily busy
+  }
   db.exec("PRAGMA foreign_keys = ON;");
 
   // Create tables
@@ -47,6 +53,7 @@ function initDatabase(db: DatabaseSync) {
       visit_count INTEGER NOT NULL DEFAULT 0,
       last_visit_at TEXT,
       points_expire_at TEXT,
+      loyalty_enrolled INTEGER NOT NULL DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -179,6 +186,12 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "customers", "birth_date TEXT");
   safeAddColumn(db, "customers", "last_birthday_reward_year INTEGER");
   safeAddColumn(db, "customers", "fudo_customer_id TEXT");
+  safeAddColumn(db, "customers", "loyalty_enrolled INTEGER NOT NULL DEFAULT 1");
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_customers_enrolled ON customers(loyalty_enrolled);");
+  } catch {
+    // Safe to ignore if already created concurrently
+  }
   safeAddColumn(db, "sales", "claimed_at TEXT");
   safeAddColumn(db, "sales", "claimed_by_customer_id TEXT");
   safeAddColumn(db, "sales", "visit_added INTEGER NOT NULL DEFAULT 0");

@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findCustomerById, getCustomerPointsHistory, getCustomerSales, getCustomerActiveBatches, checkBirthdayStatus } from "@/lib/db/customer-repo";
+import {
+  findCustomerById,
+  getCustomerPointsHistory,
+  getCustomerSales,
+  getCustomerActiveBatches,
+  checkBirthdayStatus,
+  updateCustomerLoyaltyEnrollment,
+} from "@/lib/db/customer-repo";
 import { getActiveRewards } from "@/lib/db/settings-repo";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -72,6 +79,35 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al obtener datos del cliente";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const { loyalty_enrolled, creditRetroactive } = body;
+
+    if (loyalty_enrolled === undefined) {
+      return NextResponse.json(
+        { success: false, error: "El campo loyalty_enrolled es obligatorio." },
+        { status: 400 }
+      );
+    }
+
+    const result = updateCustomerLoyaltyEnrollment(id, Boolean(loyalty_enrolled), Boolean(creditRetroactive));
+
+    return NextResponse.json({
+      success: true,
+      customer: result.customer,
+      retroPointsCredited: result.retroPointsCredited,
+      message: result.customer.loyalty_enrolled
+        ? `Comensal adherido con éxito al programa de fidelidad.${result.retroPointsCredited > 0 ? ` Se acreditaron +${result.retroPointsCredited} puntos retroactivos.` : ""}`
+        : "Comensal dado de baja del programa de fidelidad (no acumulará puntos).",
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error al actualizar estado del cliente";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
