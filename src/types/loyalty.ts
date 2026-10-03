@@ -68,6 +68,7 @@ export interface LoyaltySettings {
   allow_visit_delivery: boolean; // ¿Delivery suma visita? Default: false
   welcome_points_enabled?: boolean; // ¿Otorgar puntos de bienvenida al registrarse / afiliarse? Default: false
   welcome_points_amount?: number; // Cantidad de puntos de bienvenida (ej. 50, 100)
+  is_sandbox?: boolean; // Modo demo / sandbox activo (desactiva cooldown antifraude para testing en esta build)
   updated_at: string;
 }
 

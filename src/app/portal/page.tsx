@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -29,6 +29,7 @@ function PortalContent() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
+  const isSharingRef = useRef(false);
 
   // Catch beforeinstallprompt for PWA install button
   useEffect(() => {
@@ -114,20 +115,37 @@ function PortalContent() {
   };
 
   const handleShareCard = async () => {
-    if (!cardData) return;
+    if (!cardData || isSharingRef.current) return;
     const shareUrl = `${window.location.origin}/portal?dni=${cardData.customer.document_number}`;
 
     if (typeof navigator !== "undefined" && navigator.share) {
+      isSharingRef.current = true;
       try {
         await navigator.share({
           title: "Mi Tarjeta GastroBumeran",
           text: `¡Mirá mis puntos y beneficios en GastroBumeran!`,
           url: shareUrl,
         });
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          console.error("Share error:", err);
+      } catch (err: unknown) {
+        const error = err as Error;
+        // Ignorar cancelaciones del usuario o si ya había un share en progreso
+        if (
+          error?.name === "AbortError" ||
+          error?.name === "InvalidStateError" ||
+          error?.name === "NotAllowedError"
+        ) {
+          return;
         }
+        // Fallback al portapapeles si la API nativa de compartir falló de forma imprevista
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          setCopiedLink(true);
+          setTimeout(() => setCopiedLink(false), 2000);
+        } catch {
+          // Ignorar fallo de portapapeles
+        }
+      } finally {
+        isSharingRef.current = false;
       }
     } else {
       try {

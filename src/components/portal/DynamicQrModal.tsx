@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import QRCode from "qrcode";
 import { X, QrCode, Sparkles, Copy, Check, Share2, Sun } from "lucide-react";
 
@@ -24,6 +24,7 @@ export function DynamicQrModal({
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [isCopied, setIsCopied] = useState(false);
   const [isShared, setIsShared] = useState(false);
+  const isSharingRef = useRef(false);
 
   useEffect(() => {
     if (!qrPayload || !isOpen) return;
@@ -54,7 +55,10 @@ export function DynamicQrModal({
   };
 
   const handleShare = async () => {
+    if (isSharingRef.current) return;
+
     if (typeof navigator !== "undefined" && navigator.share) {
+      isSharingRef.current = true;
       try {
         await navigator.share({
           title: "Mi Tarjeta GastroBumeran",
@@ -63,10 +67,18 @@ export function DynamicQrModal({
         });
         setIsShared(true);
         setTimeout(() => setIsShared(false), 2000);
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          console.error("Share error:", err);
+      } catch (err: unknown) {
+        const error = err as Error;
+        if (
+          error?.name === "AbortError" ||
+          error?.name === "InvalidStateError" ||
+          error?.name === "NotAllowedError"
+        ) {
+          return;
         }
+        handleCopyCode();
+      } finally {
+        isSharingRef.current = false;
       }
     } else {
       handleCopyCode();

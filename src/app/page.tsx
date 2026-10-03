@@ -53,6 +53,7 @@ export default function PosPage() {
     allow_visit_delivery: false,
     welcome_points_enabled: false,
     welcome_points_amount: 0,
+    is_sandbox: true,
     updated_at: new Date().toISOString(),
   });
 

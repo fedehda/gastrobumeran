@@ -39,8 +39,10 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
 
   // Projected visit addition
   const isVisitSpendEligible = amount >= settings.min_spend_for_visit;
+  // COOLDOWN ANTIFRAUDE: En modo demo/sandbox se desactiva temporalmente para pruebas en esta build
+  const isSandbox = settings.is_sandbox ?? true;
   let isCooldownActive = false;
-  if (customer.last_visit_at && isVisitSpendEligible) {
+  if (!isSandbox && customer.last_visit_at && isVisitSpendEligible) {
     const lastVisit = new Date(customer.last_visit_at).getTime();
     const now = new Date().getTime();
     const diffHours = (now - lastVisit) / (1000 * 60 * 60);
@@ -182,7 +184,14 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
                       {isCounter ? "Mostrador" : isDelivery ? "Delivery" : "Salón"} no suma visita (según reglas)
                     </span>
                   ) : willAddVisit ? (
-                    <span className="text-emerald-400 font-semibold">✓ Sumará +1 Visita</span>
+                    <span className="text-emerald-400 font-semibold flex items-center">
+                      ✓ Sumará +1 Visita
+                      {isSandbox && customer.last_visit_at && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 font-normal">
+                          Demo: Cooldown desactivado
+                        </span>
+                      )}
+                    </span>
                   ) : isCooldownActive ? (
                     <span className="text-gray-400 italic">Cooldown 18hs activo (no suma visita repetida)</span>
                   ) : (

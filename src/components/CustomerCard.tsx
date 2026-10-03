@@ -16,7 +16,6 @@ import {
   X,
   Cake,
   Gift,
-  CheckCircle,
 } from "lucide-react";
 import { Customer, BirthdayStatus } from "@/types/loyalty";
 import { formatBirthdayDisplay } from "@/lib/loyalty/date-utils";
