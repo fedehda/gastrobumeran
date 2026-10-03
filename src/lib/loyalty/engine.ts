@@ -1,6 +1,5 @@
 import { getDatabase } from "@/lib/db/db";
 import { getLoyaltySettings, getRewardById } from "@/lib/db/settings-repo";
-import { getFudoConfig } from "@/lib/db/fudo-repo";
 import { findCustomerById, findCustomerByDocument, createCustomer, checkBirthdayStatus } from "@/lib/db/customer-repo";
 import {
   Customer,
@@ -114,16 +113,7 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       const currentSaleTime = saleDateObj.getTime();
       const diffHours = (currentSaleTime - lastVisitTime) / (1000 * 60 * 60);
 
-      // COOLDOWN ANTIFRAUDE: Desactivado temporalmente en modo demo/sandbox para pruebas en esta build
-      const fudoConfig = getFudoConfig();
-      const rawKey = (fudoConfig.api_key || "").trim().toUpperCase();
-      const isSandbox =
-        !rawKey ||
-        rawKey.startsWith("DEMO_") ||
-        rawKey === "SANDBOX" ||
-        (fudoConfig.api_secret || "").trim().toUpperCase().startsWith("DEMO_");
-
-      if (isSandbox || diffHours >= settings.visit_cooldown_hours || diffHours < 0) {
+      if (diffHours >= settings.visit_cooldown_hours || diffHours < 0) {
         visitAdded = true;
       }
     }
