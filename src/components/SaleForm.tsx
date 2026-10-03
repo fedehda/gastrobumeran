@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { PlusCircle, Award, CheckCircle2, AlertCircle } from "lucide-react";
-import { Customer, LoyaltySettings } from "@/types/loyalty";
+import React, { useState, useEffect } from "react";
+import { PlusCircle, Award, CheckCircle2, AlertCircle, Flame } from "lucide-react";
+import { Customer, LoyaltySettings, LoyaltyCampaign } from "@/types/loyalty";
 
 interface SaleFormProps {
   customer: Customer;
@@ -12,23 +12,89 @@ interface SaleFormProps {
 
 const PRESET_AMOUNTS = [1500, 3000, 5000, 10000, 20000, 35000];
 
+function evaluateMatchingCampaign(
+  campaigns: LoyaltyCampaign[],
+  amount: number,
+  basePoints: number,
+  sector: "TABLE" | "COUNTER" | "DELIVERY"
+): { campaign: LoyaltyCampaign; extraPoints: number; totalPoints: number } | null {
+  if (!campaigns.length || basePoints <= 0) return null;
+  const now = new Date();
+  const day = now.getDay();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const dateStr = `${yyyy}-${mm}-${dd}`;
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const timeStr = `${hours}:${minutes}`;
+
+  let best: { campaign: LoyaltyCampaign; extraPoints: number; totalPoints: number } | null = null;
+  let maxExtra = 0;
+
+  for (const camp of campaigns) {
+    if (!camp.is_active) continue;
+    if (camp.min_spend > 0 && amount < camp.min_spend) continue;
+    if (camp.applicable_sectors !== "ALL" && camp.applicable_sectors !== sector) continue;
+    if (camp.start_date && dateStr < camp.start_date) continue;
+    if (camp.end_date && dateStr > camp.end_date) continue;
+    if (camp.days_of_week.length > 0 && !camp.days_of_week.includes(day)) continue;
+
+    if (camp.start_time && camp.end_time) {
+      if (camp.start_time <= camp.end_time) {
+        if (timeStr < camp.start_time || timeStr > camp.end_time) continue;
+      } else {
+        if (timeStr < camp.start_time && timeStr > camp.end_time) continue;
+      }
+    } else if (camp.start_time && timeStr < camp.start_time) continue;
+    else if (camp.end_time && timeStr > camp.end_time) continue;
+
+    const multiplierExtra = camp.multiplier > 1.0 ? Math.floor(basePoints * (camp.multiplier - 1)) : 0;
+    const extra = multiplierExtra + (camp.bonus_points > 0 ? camp.bonus_points : 0);
+    if (extra <= 0 && camp.multiplier <= 1.0 && camp.bonus_points <= 0) continue;
+
+    if (!best || extra > maxExtra || (extra === maxExtra && camp.priority > best.campaign.priority)) {
+      maxExtra = extra;
+      best = { campaign: camp, extraPoints: extra, totalPoints: basePoints + extra };
+    }
+  }
+
+  return best;
+}
+
 export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
   const [amountStr, setAmountStr] = useState("");
   const [concept, setConcept] = useState("Consumo Salón");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activeCampaigns, setActiveCampaigns] = useState<LoyaltyCampaign[]>([]);
+
+  useEffect(() => {
+    fetch("/api/campaigns/active")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.campaigns)) {
+          setActiveCampaigns(data.campaigns);
+        }
+      })
+      .catch((err) => console.error("Error loading active campaigns:", err));
+  }, []);
 
   const amount = parseFloat(amountStr) || 0;
 
   // Real-time calculated points
   const isEnrolled = customer.loyalty_enrolled !== 0 && customer.loyalty_enrolled !== false;
   const pointsRate = Math.max(1, settings.points_earning_rate);
-  const projectedPoints = isEnrolled ? Math.floor(amount / pointsRate) : 0;
+  const basePoints = isEnrolled ? Math.floor(amount / pointsRate) : 0;
 
   // Concept & Sale type resolution
   const isCounter = concept.includes("Mostrador") || concept.includes("Take Away");
   const isDelivery = concept.includes("Delivery");
   const currentSaleType = isCounter ? "COUNTER" : isDelivery ? "DELIVERY" : "TABLE";
+
+  // Dynamic Campaigns matching
+  const matchingCampaign = evaluateMatchingCampaign(activeCampaigns, amount, basePoints, currentSaleType);
+  const totalProjectedPoints = matchingCampaign ? matchingCampaign.totalPoints : basePoints;
 
   // Check if sector is configured to add visits
   const sectorAllowsVisit = isCounter
@@ -169,13 +235,46 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
         {/* Live Calculation Box */}
         {amount > 0 && (
           isEnrolled ? (
-            <div className="p-3.5 rounded-xl bg-gradient-to-r from-bumeran-950/40 via-dark-950 to-dark-950 border border-bumeran-500/30 flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center text-bumeran-400 font-bold text-sm">
-                  <Award className="w-4 h-4 mr-1 text-bumeran-500" />
-                  +{projectedPoints} Puntos a acreditar
+            <div className={`p-3.5 rounded-xl border flex flex-col space-y-2 text-xs ${
+              matchingCampaign
+                ? "bg-gradient-to-r from-amber-950/60 via-dark-950 to-dark-950 border-amber-500/40 shadow-sm"
+                : "bg-gradient-to-r from-bumeran-950/40 via-dark-950 to-dark-950 border-bumeran-500/30"
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  {matchingCampaign ? (
+                    <div className="flex items-center text-amber-300 font-bold text-sm">
+                      <Flame className="w-4 h-4 mr-1 text-amber-400 animate-pulse" />
+                      +{totalProjectedPoints} Puntos a acreditar
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-bumeran-400 font-bold text-sm">
+                      <Award className="w-4 h-4 mr-1 text-bumeran-500" />
+                      +{basePoints} Puntos a acreditar
+                    </div>
+                  )}
+
+                  {matchingCampaign && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      🔥 {matchingCampaign.campaign.name}
+                    </span>
+                  )}
                 </div>
-                <div className="h-4 w-px bg-dark-800" />
+
+                <span className="text-emerald-400 font-medium">
+                  Vencimiento +90 días
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-gray-300 pt-1 border-t border-dark-800">
+                {matchingCampaign ? (
+                  <span className="text-amber-200/90 font-medium">
+                    Desglose: <strong>+{basePoints}</strong> base + <strong>+{matchingCampaign.extraPoints}</strong> promo
+                  </span>
+                ) : null}
+
+                {matchingCampaign && <div className="h-3 w-px bg-dark-750" />}
+
                 <div className="flex items-center text-gray-300">
                   {!sectorAllowsVisit ? (
                     <span className="text-amber-400/90 font-medium">
@@ -190,9 +289,6 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
                   )}
                 </div>
               </div>
-              <span className="text-emerald-400 font-medium">
-                Vencimiento +90 días
-              </span>
             </div>
           ) : (
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
@@ -232,7 +328,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
             <>
               <CheckCircle2 className="w-4 h-4" />
               <span>
-                Confirmar Venta y Sumar {projectedPoints > 0 ? `+${projectedPoints} Pts` : "Puntos"}
+                Confirmar Venta y Sumar {totalProjectedPoints > 0 ? `+${totalProjectedPoints} Pts` : "Puntos"}
               </span>
             </>
           )}

@@ -18,6 +18,7 @@ import { DynamicQrModal } from "@/components/portal/DynamicQrModal";
 import { CustomerRewardsCatalog } from "@/components/portal/CustomerRewardsCatalog";
 import { CustomerHistoryList } from "@/components/portal/CustomerHistoryList";
 import { PortalLoginPrompt } from "@/components/portal/PortalLoginPrompt";
+import { ActiveCampaignsBanner } from "@/components/portal/ActiveCampaignsBanner";
 
 function PortalContent() {
   const searchParams = useSearchParams();
@@ -270,6 +271,9 @@ function PortalContent() {
                 <span>Mostrar Código QR al Mozo / Caja</span>
               </button>
             </div>
+
+            {/* Active Dynamic Campaigns Banner */}
+            <ActiveCampaignsBanner campaigns={cardData.active_campaigns} />
 
             {/* Rewards Catalog */}
             <CustomerRewardsCatalog

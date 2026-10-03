@@ -30,6 +30,9 @@ export interface Sale {
   sale_date: string;
   status: string;
   visit_added?: boolean;
+  campaign_id?: string | null;
+  campaign_multiplier?: number;
+  campaign_bonus_points?: number;
   import_batch_id?: string | null;
   claimed_at?: string | null;
   claimed_by_customer_id?: string | null;
@@ -53,6 +56,7 @@ export interface PointsHistory {
   sale_id?: string | null;
   points: number; // positive = earned, negative = redeemed/expired, 0 = birthday courtesy
   concept: string;
+  campaign_id?: string | null;
   created_at: string;
 }
 
@@ -80,6 +84,50 @@ export interface LoyaltyReward {
   is_active: boolean;
   description?: string | null;
   created_at: string;
+}
+
+export type CampaignSector = "ALL" | "TABLE" | "COUNTER" | "DELIVERY";
+
+export interface LoyaltyCampaign {
+  id: string;
+  name: string;
+  description?: string | null;
+  multiplier: number; // e.g. 1.5, 2.0, 3.0
+  bonus_points: number; // fixed bonus points (e.g. +50 pts)
+  days_of_week: number[]; // [0, 1, 2, 3, 4, 5, 6] (0 = Sunday, 1 = Monday, etc.)
+  start_time?: string | null; // "18:00"
+  end_time?: string | null; // "20:00"
+  start_date?: string | null; // "YYYY-MM-DD"
+  end_date?: string | null; // "YYYY-MM-DD"
+  min_spend: number;
+  applicable_sectors: CampaignSector; // "ALL" | "TABLE" | "COUNTER" | "DELIVERY"
+  is_active: boolean;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCampaignInput {
+  name: string;
+  description?: string | null;
+  multiplier?: number;
+  bonus_points?: number;
+  days_of_week?: number[];
+  start_time?: string | null;
+  end_time?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  min_spend?: number;
+  applicable_sectors?: CampaignSector;
+  is_active?: boolean;
+  priority?: number;
+}
+
+export interface CampaignEvaluationResult {
+  campaign: LoyaltyCampaign;
+  multiplier: number;
+  bonusPoints: number;
+  extraPoints: number; // total bonus points credited on top of base points
 }
 
 export interface CsvMappingPreset {
@@ -153,6 +201,14 @@ export interface LoyaltyTransactionResult {
   customer: Customer;
   sale?: Sale;
   points_earned: number;
+  base_points?: number;
+  campaign_bonus_points?: number;
+  applied_campaign?: {
+    id: string;
+    name: string;
+    multiplier: number;
+    bonus_points: number;
+  } | null;
   visit_added: boolean;
   points_expire_at?: string | null;
   batch_expires_at?: string;
@@ -308,6 +364,7 @@ export interface CustomerPortalCard {
   rewards_progress: PortalRewardProgress[];
   recent_history: PointsHistory[];
   qr_payload: string;
+  active_campaigns?: LoyaltyCampaign[];
 }
 
 export type RfmQuadrant = "CHAMPIONS" | "PROMISING" | "AT_RISK" | "DORMANT";

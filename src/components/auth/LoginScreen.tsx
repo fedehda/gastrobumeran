@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Utensils, KeyRound, Mail, ShieldCheck, Eye, EyeOff, Sparkles, AlertCircle, ArrowRight, Keyboard } from "lucide-react";
+import { Utensils, KeyRound, Mail, ShieldCheck, Eye, EyeOff, Sparkles, AlertCircle, ArrowRight, Keyboard, Lock } from "lucide-react";
 import { AdminUser } from "@/types/loyalty";
 
 interface LoginScreenProps {
@@ -17,11 +17,31 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
   const isLoadingRef = useRef(isLoading);
+  const lockoutSecondsRef = useRef(lockoutSeconds);
   useEffect(() => {
     isLoadingRef.current = isLoading;
   }, [isLoading]);
+  useEffect(() => {
+    lockoutSecondsRef.current = lockoutSeconds;
+  }, [lockoutSeconds]);
+
+  // Countdown timer for security lockout
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          setErrorMsg(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutSeconds]);
 
   const triggerKeyFeedback = (key: string) => {
     setActiveKey(key);
@@ -32,6 +52,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
   const submitLogin = useCallback(
     async (credentials: { email?: string; password?: string; pin?: string }) => {
+      if (lockoutSecondsRef.current > 0) return;
       setIsLoading(true);
       setErrorMsg(null);
 
@@ -44,9 +65,13 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
+          if (data.retryAfterSeconds && typeof data.retryAfterSeconds === "number") {
+            setLockoutSeconds(data.retryAfterSeconds);
+          }
           throw new Error(data.error || "Credenciales inválidas");
         }
 
+        setLockoutSeconds(0);
         onLoginSuccess(data.user);
       } catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Error al iniciar sesión");
@@ -60,7 +85,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
   const handlePinDigit = useCallback(
     (digit: string) => {
-      if (isLoadingRef.current) return;
+      if (isLoadingRef.current || lockoutSecondsRef.current > 0) return;
       setErrorMsg(null);
       triggerKeyFeedback(digit);
       setPin((prev) => {
@@ -77,13 +102,13 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   );
 
   const handlePinDelete = useCallback(() => {
-    if (isLoadingRef.current) return;
+    if (isLoadingRef.current || lockoutSecondsRef.current > 0) return;
     triggerKeyFeedback("⌫");
     setPin((prev) => prev.slice(0, -1));
   }, []);
 
   const handlePinClear = useCallback(() => {
-    if (isLoadingRef.current) return;
+    if (isLoadingRef.current || lockoutSecondsRef.current > 0) return;
     triggerKeyFeedback("C");
     setPin("");
   }, []);
@@ -162,6 +187,12 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     submitLogin({ pin: "1234" });
   };
 
+  const formatLockoutTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-dark-950 text-gray-100 relative overflow-hidden select-none">
       {/* Background ambient lighting */}
@@ -192,7 +223,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             type="button"
             onClick={() => {
               setAuthMode("pin");
-              setErrorMsg(null);
+              if (lockoutSeconds <= 0) setErrorMsg(null);
             }}
             className={`flex items-center justify-center space-x-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
               authMode === "pin"
@@ -208,7 +239,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             type="button"
             onClick={() => {
               setAuthMode("password");
-              setErrorMsg(null);
+              if (lockoutSeconds <= 0) setErrorMsg(null);
             }}
             className={`flex items-center justify-center space-x-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
               authMode === "password"
@@ -221,9 +252,24 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </button>
         </div>
 
-        {/* Error message */}
-        {errorMsg && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center space-x-2 animate-shake">
+        {/* Lockout banner or error message */}
+        {lockoutSeconds > 0 ? (
+          <div role="alert" className="p-4 rounded-2xl bg-red-500/10 border border-red-500/40 text-red-300 text-xs flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in duration-300">
+            <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shadow-inner">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-bold text-white text-sm">Acceso Bloqueado por Seguridad</div>
+              <p className="text-gray-300 text-xs mt-0.5">
+                Demasiados intentos fallidos consecutivos. Podrás volver a intentar en:
+              </p>
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-dark-950 font-mono text-base font-black text-red-400 border border-red-500/30">
+              {formatLockoutTime(lockoutSeconds)}
+            </div>
+          </div>
+        ) : errorMsg && (
+          <div role="status" aria-live="polite" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center space-x-2 animate-shake">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
@@ -234,8 +280,13 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <div className="space-y-5">
             <div className="text-center space-y-2">
               <p className="text-xs text-gray-400">Ingresa tu PIN de seguridad (4 dígitos)</p>
-              {/* Masked circles display */}
-              <div className="flex justify-center items-center space-x-3 py-2">
+              {/* Masked circles display with accessible status */}
+              <div
+                role="status"
+                aria-live="polite"
+                aria-label={`PIN ingresado: ${pin.length} de 4 dígitos`}
+                className="flex justify-center items-center space-x-3 py-2"
+              >
                 {[0, 1, 2, 3].map((idx) => (
                   <div
                     key={idx}
@@ -253,6 +304,14 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"].map((btn) => {
                 const isFeedbackActive = activeKey === btn;
+                const isSpecial = btn === "C" || btn === "⌫";
+                const ariaLabel =
+                  btn === "C"
+                    ? "Limpiar PIN completo"
+                    : btn === "⌫"
+                    ? "Borrar último dígito"
+                    : `Dígito ${btn}`;
+
                 return (
                   <button
                     key={btn}
@@ -262,9 +321,10 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                       else if (btn === "⌫") handlePinDelete();
                       else handlePinDigit(btn);
                     }}
-                    disabled={isLoading}
-                    className={`h-14 rounded-2xl text-lg font-bold transition-all duration-100 flex items-center justify-center active:scale-95 disabled:opacity-50 ${
-                      btn === "C" || btn === "⌫"
+                    disabled={isLoading || lockoutSeconds > 0}
+                    aria-label={ariaLabel}
+                    className={`h-14 rounded-2xl text-lg font-bold transition-all duration-100 flex items-center justify-center active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+                      isSpecial
                         ? isFeedbackActive
                           ? "bg-dark-700 text-white border border-dark-600 scale-[0.98]"
                           : "bg-dark-800/80 hover:bg-dark-750 text-gray-400 text-sm font-semibold"
@@ -291,36 +351,43 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         {authMode === "password" && (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">
+              <label htmlFor="admin-email" className="block text-xs font-medium text-gray-300 mb-1">
                 Correo Electrónico
               </label>
               <div className="relative">
                 <input
+                  id="admin-email"
                   type="email"
+                  autoComplete="email"
                   value={email}
+                  disabled={lockoutSeconds > 0}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@gastrobumeran.com"
-                  className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500"
+                  className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500 disabled:opacity-50"
                 />
                 <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-500" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">
+              <label htmlFor="admin-password" className="block text-xs font-medium text-gray-300 mb-1">
                 Contraseña de Administrador
               </label>
               <div className="relative">
                 <input
+                  id="admin-password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   value={password}
+                  disabled={lockoutSeconds > 0}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Ingresa tu contraseña"
-                  className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500 pr-10"
+                  className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500 pr-10 disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
                   className="absolute right-3 top-3 text-gray-500 hover:text-white"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -330,8 +397,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 text-white font-bold text-sm shadow-glow transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              disabled={isLoading || lockoutSeconds > 0}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-bumeran-600 to-amber-600 hover:from-bumeran-500 hover:to-amber-500 text-white font-bold text-sm shadow-glow transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>{isLoading ? "Validando..." : "Ingresar como Administrador"}</span>
               <ArrowRight className="w-4 h-4" />
@@ -344,8 +411,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <button
             type="button"
             onClick={handleQuickDemoLogin}
-            disabled={isLoading}
-            className="w-full inline-flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-dark-800 hover:bg-dark-750 text-xs font-bold text-amber-400 border border-amber-500/20 transition-all shadow-sm"
+            disabled={isLoading || lockoutSeconds > 0}
+            className="w-full inline-flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-dark-800 hover:bg-dark-750 text-xs font-bold text-amber-400 border border-amber-500/20 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Sparkles className="w-4 h-4" />
             <span>Ingreso Rápido Demo (PIN: 1234)</span>

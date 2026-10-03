@@ -14,6 +14,7 @@ import { ExpirationAuditModal } from "@/components/ExpirationAuditModal";
 import { CsvWizardModal } from "@/components/csv/CsvWizardModal";
 import { FudoModal } from "@/components/fudo/FudoModal";
 import { VoidSaleModal } from "@/components/sales/VoidSaleModal";
+import { CampaignsModal } from "@/components/campaigns/CampaignsModal";
 import { BackofficeDashboard } from "@/components/analytics/BackofficeDashboard";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { Customer, LoyaltySettings, LoyaltyReward, PointsHistory, Sale, BirthdayStatus, AdminUser } from "@/types/loyalty";
@@ -78,6 +79,7 @@ export default function PosPage() {
   const [isCsvWizardOpen, setIsCsvWizardOpen] = useState(false);
   const [isFudoModalOpen, setIsFudoModalOpen] = useState(false);
   const [isVoidModalOpen, setIsVoidModalOpen] = useState(false);
+  const [isCampaignsModalOpen, setIsCampaignsModalOpen] = useState(false);
 
   // Toast / feedback alert
   const [toast, setToast] = useState<{ type: "success" | "info"; message: string } | null>(null);
@@ -326,6 +328,7 @@ export default function PosPage() {
         onViewModeChange={setViewMode}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onOpenAudit={() => setIsAuditModalOpen(true)}
+        onOpenCampaigns={() => setIsCampaignsModalOpen(true)}
         onOpenCsvWizard={() => setIsCsvWizardOpen(true)}
         onOpenFudo={() => setIsFudoModalOpen(true)}
         onOpenVoidSale={() => setIsVoidModalOpen(true)}
@@ -630,6 +633,15 @@ export default function PosPage() {
           if (customerDetail && updatedCust && customerDetail.customer.id === updatedCust.id) {
             selectCustomer(updatedCust);
           }
+          refreshData();
+        }}
+      />
+
+      {/* Dynamic Campaigns Modal (Sprint F) */}
+      <CampaignsModal
+        isOpen={isCampaignsModalOpen}
+        onClose={() => {
+          setIsCampaignsModalOpen(false);
           refreshData();
         }}
       />

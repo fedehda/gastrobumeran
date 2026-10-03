@@ -184,7 +184,33 @@ GastroBumeran es una plataforma web full-stack diseñada para la retención y re
   - Si una venta cerrada se anula en Fudo, se revierte de forma automática en GastroBumeran y se reporta en `canceledCount`.
 - **Buscador & Modal de Anulación Manual (`VoidSaleModal.tsx`):**
   - Modal accesible desde la barra superior para buscar tickets por ID, Fudo ID, comensal o teléfono y anular ventas con confirmación en dos pasos.
-  - Pestaña de ventas en el perfil del cliente con badges de estado (*Cerrada* / *Anulada*) y botón de anulación rápida.
+### 14. Motor de Campañas Dinámicas & Días Valle (Sprint Futuro F)
+- **Multiplicadores Temporales y Bonos Fijos:**
+  - Configuración de campañas promocionales con multiplicadores de puntos (ej. *x1.5*, *x2*, *x3*) y puntos adicionales directos (ej. *+50 pts bonus*).
+  - Reglas condicionales avanzadas:
+    - **Días de la semana:** Selección interactiva individual (Lun a Dom), días hábiles o fines de semana.
+    - **Ventana horaria:** Rango de hora inicio y fin (ej. *18:00 a 20:30 hs*) para Happy Hour de salón o promociones nocturnas.
+    - **Sector / Canal de Venta:** Filtrado por *Salón / Mesas*, *Mostrador / Take Away*, *Delivery* o *Todos los canales*.
+    - **Gasto Mínimo:** Umbral de ticket requerido para activar la promoción.
+    - **Prioridad de Desempate:** Resolución inteligente si múltiples campañas aplican simultáneamente, seleccionando siempre la que otorgue el mayor beneficio al comensal.
+- **Evaluación y Acreditación Automática en el Motor de Fidelización (`processSale`):**
+  - Detección en tiempo real de la franja horaria, día y sector de la venta (aplicable en POS, Fudo API, Webhooks y CSV).
+  - Cálculo transparente: `basePoints = floor(amount / rate)` y `extraPoints = floor(basePoints * (multiplier - 1)) + bonus_points`.
+  - Desglose contable en el ticket y en `points_history` (ej. `[🔥 Happy Hour After Office (x2): 150 base + 150 promo]`).
+  - Persistencia en la tabla `sales` (`campaign_id`, `campaign_multiplier`, `campaign_bonus_points`) y consolidación atómica en lote FIFO con vigencia normal.
+  - Rollback exacto y atómico en anulación (`cancelSale`): revierte la totalidad de los puntos acreditados (base + bono promocional).
+- **Banner Promocional Dinámico en la Tarjeta Web del Cliente (PWA `/portal`):**
+  - Componente visual `ActiveCampaignsBanner` que muestra a los comensales las promociones vigentes con badges de días, horarios y multiplicadores para estimular la concurrencia en días valle.
+- **Feedback en Vivo en la Pantalla de Caja POS (`SaleForm`):**
+  - Cálculo en tiempo real mientras el cajero tipea el importe o selecciona presets de ticket, mostrando el desglose `+X Puntos a acreditar (🔥 Campaña Activa: +Base +Promo)`.
+- **Modal de Gestión Integral en Backoffice (`CampaignsModal`):**
+  - Acceso directo desde la barra de navegación con botón **"Campañas"**.
+  - **Plantillas Rápidas Gastronómicas (1-Click Presets):**
+    - *Happy Hour After Office (x2 Puntos, Lun-Vie 18:00 a 20:30, Salón)*
+    - *Almuerzos Días Valle (x1.5 Puntos, Mar-Mié 12:00 a 15:30, Salón)*
+    - *Fin de Semana Delivery (+100 pts Bonus, Vie-Dom 19:00 a 23:59, Delivery)*
+    - *Súper Domingo Salón (x3 Puntos, Dom 19:30 a 23:30, Salón)*
+  - Interruptor toggle de activación/pausa instantánea, edición de reglas temporales y eliminación.
 
 ---
 
@@ -242,6 +268,9 @@ npx tsx src/scripts/test-portal.ts
 
 # Ejecutar pruebas de Inteligencia RFM y Pasivo Contable CMV (Sprint H)
 npx tsx src/scripts/test-rfm.ts
+
+# Ejecutar pruebas del Motor de Campañas Dinámicas y Días Valle (Sprint F)
+npx tsx src/scripts/test-campaigns.ts
 ```
 
 Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interactuar con la plataforma:
@@ -263,7 +292,7 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interac
 - [ ] **Sprint Futuro C:** Notificaciones automáticas por WhatsApp Business API (Bienvenida, Día 75, Saludo Cumpleaños, Hitos).
 - [ ] **Sprint Futuro D:** Pases Nativos para Google Wallet y Apple Wallet (`.pkpass`).
 - [ ] **Sprint Futuro E:** Operación Rápida de Salón para Mozos & Resiliencia Offline.
-- [ ] **Sprint Futuro F:** Motor de Campañas Dinámicas (Multiplicadores Días Valle, Happy Hour y Franjas Horarias).
+- [x] **Sprint Futuro F:** Motor de Campañas Dinámicas (Multiplicadores Días Valle, Happy Hour, Desglose en POS y PWA).
 - [ ] **Sprint Futuro G:** Programa de Referidos ("Traé a un Amigo" & Recompensas Cruzadas).
 - [x] **Sprint Futuro H:** Inteligencia de Clientes (Segmentación RFM Automática) & Pasivo Contable de Puntos.
 - [ ] **Sprint Futuro I:** Encuestas de Satisfacción Express (NPS Post-Consumo) & Reputación en Google Maps.

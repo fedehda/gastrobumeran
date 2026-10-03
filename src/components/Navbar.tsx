@@ -11,6 +11,7 @@ interface NavbarProps {
   onViewModeChange?: (mode: "pos" | "analytics") => void;
   onOpenSettings: () => void;
   onOpenAudit: () => void;
+  onOpenCampaigns?: () => void;
   onOpenCsvWizard: () => void;
   onOpenFudo: () => void;
   onOpenVoidSale?: () => void;
@@ -25,6 +26,7 @@ export function Navbar({
   onViewModeChange,
   onOpenSettings,
   onOpenAudit,
+  onOpenCampaigns,
   onOpenCsvWizard,
   onOpenFudo,
   onOpenVoidSale,
@@ -120,6 +122,18 @@ export function Navbar({
             <QrCode className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Tarjeta Cliente</span>
           </a>
+
+          {/* Dynamic Campaigns Button */}
+          {onOpenCampaigns && (
+            <button
+              onClick={onOpenCampaigns}
+              title="Motor de Campañas Dinámicas (Happy Hour, Bonos, etc.)"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-dark-900 hover:bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:text-amber-300 text-xs font-bold transition-all shadow-glow"
+            >
+              <Flame className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Campañas</span>
+            </button>
+          )}
 
           {/* CSV Universal Importer Button */}
           <button

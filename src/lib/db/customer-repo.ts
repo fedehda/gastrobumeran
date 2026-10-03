@@ -10,6 +10,7 @@ import {
   PortalRewardProgress,
 } from "@/types/loyalty";
 import { getActiveRewards } from "./settings-repo";
+import { getActiveCampaigns } from "./campaign-repo";
 import crypto from "crypto";
 
 export function findCustomerById(id: string): Customer | null {
@@ -536,6 +537,9 @@ export function getCustomerPortalData(identifier: string): CustomerPortalCard | 
   // QR Payload: high compatibility string
   const qr_payload = `GASTRO:DNI:${customer.document_number}`;
 
+  // Active Promotions & Campaigns
+  const active_campaigns = getActiveCampaigns();
+
   return {
     customer,
     tier,
@@ -546,5 +550,6 @@ export function getCustomerPortalData(identifier: string): CustomerPortalCard | 
     rewards_progress,
     recent_history,
     qr_payload,
+    active_campaigns,
   };
 }

@@ -1,6 +1,7 @@
 import { getDatabase } from "@/lib/db/db";
 import { getLoyaltySettings, getRewardById } from "@/lib/db/settings-repo";
 import { findCustomerById, findCustomerByDocument, createCustomer, checkBirthdayStatus } from "@/lib/db/customer-repo";
+import { evaluateBestCampaign } from "@/lib/db/campaign-repo";
 import {
   Customer,
   LoyaltyTransactionResult,
@@ -11,6 +12,7 @@ import {
   Sale,
   PointsBatch,
   LoyaltyReward,
+  CampaignEvaluationResult,
 } from "@/types/loyalty";
 import crypto from "crypto";
 
@@ -82,19 +84,33 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   // 2.1 Check Loyalty Program Enrollment
   const isEnrolled = customer.loyalty_enrolled !== 0 && customer.loyalty_enrolled !== false;
 
-  // 3. Eje Puntos (RF-04)
-  const earningRate = Math.max(1, settings.points_earning_rate);
-  const pointsEarned = isEnrolled ? Math.floor(input.totalAmount / earningRate) : 0;
-
-  // 4. Eje Visitas y Antifraude Cooldown (RF-04)
-  // Regla de Negocio: Se evalúa dinámicamente según la configuración de sectores (Salón, Mostrador, Delivery) si computa visita.
+  // 3. Identificación de Sector
   const isCounter =
     input.saleType === "COUNTER" ||
     (input.concept ? /mostrador|take\s*away|para\s*llevar/i.test(input.concept) : false);
   const isDelivery =
     input.saleType === "DELIVERY" ||
     (input.concept ? /delivery|envio/i.test(input.concept) : false);
+  const saleSector: "COUNTER" | "DELIVERY" | "TABLE" = isCounter
+    ? "COUNTER"
+    : isDelivery
+    ? "DELIVERY"
+    : "TABLE";
 
+  // 3.1 Eje Puntos (RF-04) & Motor de Campañas Dinámicas (Sprint F)
+  const earningRate = Math.max(1, settings.points_earning_rate);
+  const basePoints = isEnrolled ? Math.floor(input.totalAmount / earningRate) : 0;
+
+  // Evaluar mejor campaña promocional aplicable (Happy Hour, Días Valle, etc.)
+  let campaignResult: CampaignEvaluationResult | null = null;
+  if (isEnrolled && basePoints > 0) {
+    campaignResult = evaluateBestCampaign(saleDateObj, input.totalAmount, basePoints, saleSector);
+  }
+  const extraPoints = campaignResult ? campaignResult.extraPoints : 0;
+  const pointsEarned = basePoints + extraPoints;
+
+  // 4. Eje Visitas y Antifraude Cooldown (RF-04)
+  // Regla de Negocio: Se evalúa dinámicamente según la configuración de sectores (Salón, Mostrador, Delivery) si computa visita.
   let sectorAllowsVisit = true;
   if (isCounter) {
     sectorAllowsVisit = Boolean(settings.allow_visit_counter);
@@ -134,17 +150,24 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   const batchId = crypto.randomUUID();
   const nowStr = new Date().toISOString();
   const source = input.source || "MANUAL";
+  const promoTag = campaignResult
+    ? ` [🔥 ${campaignResult.campaign.name}: ${basePoints} base + ${extraPoints} promo]`
+    : "";
   const defaultConcept = isEnrolled
-    ? `Consumo ${source === "MANUAL" ? "Caja" : source} ($${input.totalAmount.toLocaleString("es-AR")}) +${pointsEarned} pts`
+    ? `Consumo ${source === "MANUAL" ? "Caja" : source} ($${input.totalAmount.toLocaleString("es-AR")}) +${pointsEarned} pts${promoTag}`
     : `Consumo ${source === "MANUAL" ? "Caja" : source} ($${input.totalAmount.toLocaleString("es-AR")}) [No Adherido]`;
-  const conceptText = input.concept || defaultConcept;
+  const conceptText = input.concept ? `${input.concept}${promoTag}` : defaultConcept;
 
   db.exec("BEGIN");
   try {
     // Insert Sale
     db.prepare(`
-      INSERT INTO sales (id, external_sale_id, customer_id, source, total_amount, sale_date, status, visit_added, import_batch_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'CLOSED', ?, ?, ?)
+      INSERT INTO sales (
+        id, external_sale_id, customer_id, source, total_amount,
+        sale_date, status, visit_added, campaign_id, campaign_multiplier,
+        campaign_bonus_points, import_batch_id, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 'CLOSED', ?, ?, ?, ?, ?, ?)
     `).run(
       saleId,
       input.externalSaleId || null,
@@ -153,6 +176,9 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       input.totalAmount,
       saleDateStr,
       visitAdded ? 1 : 0,
+      campaignResult ? campaignResult.campaign.id : null,
+      campaignResult ? campaignResult.multiplier : 1.0,
+      campaignResult ? campaignResult.bonusPoints : 0,
       input.importBatchId || null,
       nowStr
     );
@@ -175,14 +201,15 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
 
     // Insert Points History
     db.prepare(`
-      INSERT INTO points_history (id, customer_id, sale_id, points, concept, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO points_history (id, customer_id, sale_id, points, concept, campaign_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       historyId,
       customer.id,
       saleId,
       pointsEarned,
       conceptText,
+      campaignResult ? campaignResult.campaign.id : null,
       nowStr
     );
 
@@ -220,13 +247,29 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       customer: updatedCustomer,
       sale: saleEntry,
       points_earned: pointsEarned,
+      base_points: basePoints,
+      campaign_bonus_points: extraPoints,
+      applied_campaign: campaignResult
+        ? {
+            id: campaignResult.campaign.id,
+            name: campaignResult.campaign.name,
+            multiplier: campaignResult.multiplier,
+            bonus_points: campaignResult.bonusPoints,
+          }
+        : null,
       visit_added: visitAdded,
       points_expire_at: newExpirationStr,
       batch_expires_at: batchExpiresAt,
       points_history_entry: historyEntry,
       message: isEnrolled
         ? `¡Venta registrada con éxito! Sumaste ${pointsEarned} puntos${
-            visitAdded ? " y 1 visita" : !sectorAllowsVisit ? ` (${isCounter ? "mostrador" : isDelivery ? "delivery" : "salón"} no suma visita según configuración)` : ""
+            campaignResult ? ` (incluye +${extraPoints} pts promo "${campaignResult.campaign.name}")` : ""
+          }${
+            visitAdded
+              ? " y 1 visita"
+              : !sectorAllowsVisit
+              ? ` (${isCounter ? "mostrador" : isDelivery ? "delivery" : "salón"} no suma visita según configuración)`
+              : ""
           }. Vencimiento rolling renovado a ${expirationDays} días. Lote FIFO activo por ${lifetimeDays} días.`
         : `¡Venta registrada con éxito! El comensal no está adherido a fidelidad (0 puntos acreditados).`,
     };

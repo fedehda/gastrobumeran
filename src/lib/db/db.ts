@@ -178,11 +178,39 @@ function initDatabase(db: DatabaseSync) {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS auth_rate_limits (
+      key TEXT PRIMARY KEY,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      locked_until TEXT,
+      last_attempt_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS loyalty_campaigns (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      multiplier REAL NOT NULL DEFAULT 2.0,
+      bonus_points INTEGER NOT NULL DEFAULT 0,
+      days_of_week TEXT NOT NULL DEFAULT '1,2,3,4,5,6,0',
+      start_time TEXT,
+      end_time TEXT,
+      start_date TEXT,
+      end_date TEXT,
+      min_spend REAL NOT NULL DEFAULT 0.0,
+      applicable_sectors TEXT NOT NULL DEFAULT 'ALL',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      priority INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sales_external_id ON sales(external_sale_id);
     CREATE INDEX IF NOT EXISTS idx_customers_fudo_id ON customers(fudo_customer_id);
     CREATE INDEX IF NOT EXISTS idx_cron_logs_job ON cron_logs(job_name);
     CREATE INDEX IF NOT EXISTS idx_cron_logs_executed ON cron_logs(executed_at);
     CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
+    CREATE INDEX IF NOT EXISTS idx_rate_limits_locked ON auth_rate_limits(locked_until);
+    CREATE INDEX IF NOT EXISTS idx_campaigns_active ON loyalty_campaigns(is_active);
   `);
 
   // Safe migrations for pre-existing tables
@@ -206,6 +234,10 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "loyalty_settings", "welcome_points_enabled INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "loyalty_settings", "welcome_points_amount INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "fudo_config", "auth_url TEXT NOT NULL DEFAULT 'https://auth.fu.do/api'");
+  safeAddColumn(db, "sales", "campaign_id TEXT");
+  safeAddColumn(db, "sales", "campaign_multiplier REAL NOT NULL DEFAULT 1.0");
+  safeAddColumn(db, "sales", "campaign_bonus_points INTEGER NOT NULL DEFAULT 0");
+  safeAddColumn(db, "points_history", "campaign_id TEXT");
 
   // Seed default settings if none exists
   const settingsCount = (db.prepare("SELECT COUNT(*) as count FROM loyalty_settings").get() as { count: number }).count;
@@ -255,6 +287,17 @@ function initDatabase(db: DatabaseSync) {
     db.prepare(`
       INSERT INTO loyalty_rewards (name, reward_type, requirement_value, is_active, description)
       VALUES ('Cortesía Anual: Postre de Cumpleaños de la Casa', 'BIRTHDAY_GIFT', 0, 1, 'Agasajo gratuito por cumpleaños para comensales fidelizados')
+    `).run();
+  }
+
+  // Seed default campaigns if none exists
+  const campaignsCount = (db.prepare("SELECT COUNT(*) as count FROM loyalty_campaigns").get() as { count: number }).count;
+  if (campaignsCount === 0) {
+    db.prepare(`
+      INSERT INTO loyalty_campaigns (id, name, description, multiplier, bonus_points, days_of_week, start_time, end_time, applicable_sectors, is_active, priority)
+      VALUES 
+        ('camp-happy-hour', 'Happy Hour After Office (x2)', 'Doble puntos en consumos de salón entre las 18:00 y las 20:30 hs de lunes a viernes.', 2.0, 0, '1,2,3,4,5', '18:00', '20:30', 'TABLE', 1, 10),
+        ('camp-almuerzos-valle', 'Almuerzos Días Valle (x1.5)', 'Puntos acelerados x1.5 para incentivar el consumo de almuerzos martes y miércoles.', 1.5, 0, '2,3', '12:00', '15:30', 'ALL', 1, 5)
     `).run();
   }
 
