@@ -145,7 +145,46 @@ GastroBumeran es una plataforma web full-stack diseñada para la retención y re
 - **Segmentación Quirúrgica & Exportación de Campañas:**
   - **Filtros por Cuadrante y Búsqueda Dinámica:** Vista tabular completa con datos de recencia, visitas, gasto, puntos y estrategia recomendada.
   - **Exportación en CSV Compatible con Excel y Meta Ads:** Descarga de listados filtrados por cuadrante con codificación UTF-8 BOM (`\uFEFF`) y formato RFC-4180.
-  - **Herramientas para WhatsApp:** Botón de un solo clic para copiar teléfonos filtrados al portapapeles y botones directos individuales de WhatsApp con mensaje personalizado pre-cargado por cuadrante.
+### 11. Arquitectura Desacoplada de Adaptadores POS & Traductor Canónico (POS Translator)
+- **Patrón Gateway Agnóstico (`PosGateway` & `IPosAdapter`):**
+  - Ubicación: [`src/lib/pos/`](src/lib/pos).
+  - Diseñado para desacoplar el motor central de fidelización de las particularidades de cada sistema de punto de venta gastronómico (Fudo, Maxirest, Bistro, etc.).
+  - Provee una interfaz común para verificación de conectividad, consulta de ventas cerradas (`fetchClosedSales`), gestión de clientes y traducción canónica bidireccional.
+- **Traductor Canónico Bidireccional (`FudoTranslator`):**
+  - **Mapeo a Modelo Canónico (`toCanonicalSale`):** Normaliza ventas crudas JSON:API de Fudo hacia `CanonicalSale` (`externalSaleId`, `totalAmount`, `saleDate`, `saleType`, `status`, `customer`, `raw`).
+  - **Normalización Inteligente de Comandas:** Mapea automáticamente salón, mostrador/takeaway y deliveries (`TABLE`, `COUNTER`, `DELIVERY`) analizando flags como `takeAway`, `delivery` y asignación de mesa.
+  - **Traducción Inversa de Clientes (`toPosCustomerPayload`):** Convierte perfiles del programa de fidelización a la especificación JSON:API de Fudo para dar de alta clientes de forma remota.
+  - **Normalizador de Eventos de Webhook (`toCanonicalEvent`):** Interpreta payloads entrantes y los transforma en eventos normalizados (`SALE_CLOSED`, `SALE_CANCELED`, `CUSTOMER_CREATED`).
+- **Retrocompatibilidad Completa:**
+  - El cliente histórico `FudoApiClient` y la función `syncFudoSales()` delegan internamente al nuevo adaptador sin romper las llamadas preexistentes.
+
+### 12. Ingesta en Tiempo Real, Daemon Listener Continuo & Webhooks
+- **Daemon de Escucha Continua (`FudoRealtimeListener` / `npm run listener`):**
+  - Script en segundo plano ([`src/scripts/pos-realtime-listener.ts`](src/scripts/pos-realtime-listener.ts)) para sincronización en vivo de alta frecuencia (sondeo continuo cada 1.5s - 5s).
+  - Procesa e ingesta instantáneamente ventas cerradas y cancelaciones sin depender exclusivamente del cron nocturno.
+- **Receptor y Procesador de Webhooks (`/api/pos/webhook/[provider]`):**
+  - Endpoint REST preparado para recibir notificaciones HTTP POST en tiempo real enviadas por sistemas POS.
+  - Ingesta atómica de la comanda con cálculo de puntos por consumo y visitas.
+- **Bus de Eventos Pub/Sub en Memoria (`PosEventBus`):**
+  - Desacopla la ingesta del sistema de notificación a la interfaz gráfica.
+  - Emisión de eventos `SALE_INGESTED`, `SALE_VOIDED` y `SYNC_COMPLETED`.
+- **Transmisión Server-Sent Events (SSE) & Refresco Reactivo en Pantalla:**
+  - Canal de streaming SSE en `/api/pos/realtime/stream`.
+  - Componente frontend `AutoSyncWatcher` que recibe los eventos SSE y actualiza en tiempo real el perfil del comensal y las métricas de caja sin recargar el navegador.
+
+### 13. Módulo de Anulación de Ventas & Rollback Atómico (Manual y Sincronizado)
+- **Rollback Atómico en Transacción SQLite (`cancelSale`):**
+  - Reversión íntegra de la operación con protección contra dobles anulaciones.
+  - **Puntos:** Deducción del saldo de puntos acumulados (`points_balance`) y cambio de estado del lote FIFO a `DEPLETED` con `points_remaining = 0`.
+  - **Asiento Compensatorio:** Genera un registro negativo (`-X pts`) en `points_history` con motivo para auditoría contable.
+  - **Visitas:** Resta 1 visita (`visit_count`) y recalcula `last_visit_at` solo si la venta había computado visita (`visit_added = 1`). Si fue venta de mostrador/takeaway, no altera las visitas.
+  - **Facturación:** Ajusta el gasto acumulado (`total_spent`).
+- **Sincronización Automática con Fudo API:**
+  - Consulta ampliada a `filter[saleState]=in.(CLOSED,CANCELED)`.
+  - Si una venta cerrada se anula en Fudo, se revierte de forma automática en GastroBumeran y se reporta en `canceledCount`.
+- **Buscador & Modal de Anulación Manual (`VoidSaleModal.tsx`):**
+  - Modal accesible desde la barra superior para buscar tickets por ID, Fudo ID, comensal o teléfono y anular ventas con confirmación en dos pasos.
+  - Pestaña de ventas en el perfil del cliente con badges de estado (*Cerrada* / *Anulada*) y botón de anulación rápida.
 
 ---
 
@@ -171,8 +210,20 @@ npm install
 # Iniciar servidor de desarrollo
 npm run dev
 
+# Iniciar el daemon de escucha continua en tiempo real (sondeo de alta frecuencia)
+npm run listener
+
 # Ejecutar pruebas del motor central (Doble Timer, FIFO, Antifraude y Cumpleaños)
 npx tsx src/scripts/test-engine.ts
+
+# Ejecutar pruebas del traductor canónico POS y adaptadores desacoplados
+npx tsx src/scripts/test-pos-translator.ts
+
+# Ejecutar pruebas del listener en tiempo real y procesador de webhooks
+npx tsx src/scripts/test-realtime-listener.ts
+
+# Ejecutar pruebas de anulación de ventas (rollback atómico y sync Fudo)
+npx tsx src/scripts/test-void-sale.ts
 
 # Ejecutar pruebas del importador CSV (Normalización, detección de delimitador, presets e idempotencia)
 npx tsx src/scripts/test-csv.ts
@@ -203,10 +254,11 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interac
 
 - [x] **Sprint 1:** Motor Híbrido, Doble Timer Anti-Inflación, FIFO, Cumpleaños y POS.
 - [x] **Sprint 2:** Importador Universal de CSV con Wizard y Presets (Maxirest, Tango).
-- [x] **Sprint 3:** Integración con API Pública de Fudo POS (RF-01).
+- [x] **Sprint 3:** Integración con API Pública de Fudo POS (RF-01), Adaptadores Desacoplados (POS Translator) y Daemon Listener en Tiempo Real.
 - [x] **Sprint 4:** Automatización de Tareas Programadas (Crons nocturnos) y Dashboard Analítico de Backoffice (RF-05, RF-06).
-- [x] **Sprint 5:** Módulo de Autenticación de Administrador (Login con contraseña/PIN y roles) & Gestor de Catálogo de Premios y Canjes (CRUD interactivo desde el Backoffice).
+- [x] **Sprint 5:** Módulo de Autenticación de Administrador (Login con contraseña/PIN con teclado físico y roles) & Gestor de Catálogo de Premios y Canjes (CRUD interactivo desde el Backoffice).
 - [x] **Sprint Futuro A:** Portal Web del Cliente (Tarjeta Digital PWA sin login y QR dinámico).
+- [x] **Sprint Futuro A2:** Módulo de Anulación de Ventas & Rollback Atómico de Puntos y Visitas (Manual y Sincronizado).
 - [ ] **Sprint Futuro B:** Auto-Acreditación por Escaneo de Tickets Fiscales (Lector web HTML5 de QR fiscal AFIP/ARCA).
 - [ ] **Sprint Futuro C:** Notificaciones automáticas por WhatsApp Business API (Bienvenida, Día 75, Saludo Cumpleaños, Hitos).
 - [ ] **Sprint Futuro D:** Pases Nativos para Google Wallet y Apple Wallet (`.pkpass`).
