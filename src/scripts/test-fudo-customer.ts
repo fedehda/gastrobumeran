@@ -5,7 +5,7 @@
  */
 
 import { FudoApiClient } from "../lib/fudo/client";
-import { createCustomer, linkFudoCustomerId, findCustomerByFudoId, findCustomerByDocument } from "../lib/db/customer-repo";
+import { createCustomer, findCustomerByFudoId } from "../lib/db/customer-repo";
 
 async function runTest() {
   console.log("================================================================");

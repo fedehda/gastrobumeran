@@ -11,8 +11,6 @@ import {
   Receipt,
   Coins,
   History,
-  Clock,
-  Sparkles,
   Key,
   Database,
   RefreshCw,
@@ -58,8 +56,29 @@ export function TestEnvironmentManager({
   }, []);
 
   useEffect(() => {
-    fetchCounts();
-  }, [fetchCounts]);
+    let ignore = false;
+    fetch("/api/admin/reset-test-data")
+      .then((res) => res.json())
+      .then((data) => {
+        if (ignore) return;
+        if (data.success) {
+          setCounts(data.counts);
+        } else {
+          setErrorMsg(data.error || "No se pudieron obtener las métricas de prueba");
+        }
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        console.error("Error al cargar estado del entorno:", err);
+        setErrorMsg("Error de conexión al consultar datos de prueba.");
+        setIsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleExecuteReset = async (e: React.FormEvent) => {
     e.preventDefault();

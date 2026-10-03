@@ -1,6 +1,5 @@
 import {
   createCustomer,
-  findCustomerById,
   findCustomerByDocument,
   searchCustomers,
   updateCustomerLoyaltyEnrollment,

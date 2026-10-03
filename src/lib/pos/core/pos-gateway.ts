@@ -8,7 +8,7 @@ import {
   createCustomer,
 } from "@/lib/db/customer-repo";
 import { processSale, cancelSale } from "@/lib/loyalty/engine";
-import { Customer, Sale } from "@/types/loyalty";
+import { Customer } from "@/types/loyalty";
 import { IPosAdapter } from "./pos-adapter.interface";
 import { FudoAdapter } from "../adapters/fudo/fudo-adapter";
 import {
@@ -121,7 +121,6 @@ export class PosGateway {
   public async syncSales(options?: PosSyncOptions): Promise<PosSyncResult> {
     const provider = options?.provider || "FUDO";
     const adapter = this.getAdapter(provider);
-    const db = getDatabase();
 
     const config = getFudoConfig();
     const fromIso = options?.fullSync ? undefined : options?.fromIso || config.last_sync_at || undefined;
@@ -132,7 +131,7 @@ export class PosGateway {
     let duplicatedCount = 0;
     let canceledCount = 0;
     let unassignedCount = 0;
-    let newCustomersCount = 0;
+    const newCustomersCount = 0;
     let importedCustomersCount = 0;
     let updatedCustomersCount = 0;
     let totalPointsEarned = 0;

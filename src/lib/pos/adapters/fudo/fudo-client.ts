@@ -370,7 +370,6 @@ export class FudoClient {
   private getSandboxSales(fromIso?: string): FudoRawSale[] {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
-    const dir = this.getSandboxDirectory();
 
     const mockSales: FudoRawSale[] = [
       {

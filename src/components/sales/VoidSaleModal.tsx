@@ -73,14 +73,35 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchSales(query, statusFilter);
-    } else {
-      setSelectedSale(null);
-      setActionError(null);
-      setSuccessNotice(null);
-    }
-  }, [isOpen, statusFilter, fetchSales]);
+    if (!isOpen) return;
+
+    let active = true;
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    params.set("limit", "40");
+
+    fetch(`/api/sales?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active) return;
+        if (data.success) {
+          setSales(data.sales || []);
+        } else {
+          setError(data.error || "Error al cargar el listado de ventas");
+        }
+        setIsLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Error al consultar ventas");
+        setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen, statusFilter, query]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,6 +161,13 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
     }
   };
 
+  const handleClose = () => {
+    setSelectedSale(null);
+    setActionError(null);
+    setSuccessNotice(null);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -166,7 +194,7 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-colors"
           >
             <X className="w-5 h-5" />

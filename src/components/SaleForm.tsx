@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { PlusCircle, Award, Calendar, CheckCircle2, AlertCircle } from "lucide-react";
+import { PlusCircle, Award, CheckCircle2, AlertCircle } from "lucide-react";
 import { Customer, LoyaltySettings } from "@/types/loyalty";
 
 interface SaleFormProps {

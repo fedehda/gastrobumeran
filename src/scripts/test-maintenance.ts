@@ -7,7 +7,6 @@
 import { getTestDataCounts, resetTestData } from "../lib/db/maintenance-repo";
 import { createCustomer } from "../lib/db/customer-repo";
 import { processSale } from "../lib/loyalty/engine";
-import { getDatabase } from "../lib/db/db";
 
 async function runMaintenanceTests() {
   console.log("================================================================");

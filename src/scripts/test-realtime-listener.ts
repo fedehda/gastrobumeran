@@ -1,7 +1,6 @@
 import { posEventBus, PosRealtimeNotification } from "../lib/pos/real-time/event-bus";
 import { PosWebhookHandler } from "../lib/pos/real-time/webhook-handler";
 import { FudoRealtimeListener } from "../lib/pos/real-time/fudo-listener";
-import { getDatabase } from "../lib/db/db";
 import { createCustomer, findCustomerByDocument } from "../lib/db/customer-repo";
 
 async function runRealtimeTests() {

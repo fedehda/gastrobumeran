@@ -4,11 +4,8 @@ import { logCronExecution } from "@/lib/db/cron-repo";
 import { runExpirationAudit } from "@/lib/loyalty/engine";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __gb_cron_interval__: NodeJS.Timeout | undefined;
-  // eslint-disable-next-line no-var
   var __gb_cron_running__: boolean | undefined;
-  // eslint-disable-next-line no-var
   var __gb_last_expiration_check__: number | undefined;
 }
 

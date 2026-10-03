@@ -1,6 +1,5 @@
 import { findCustomerByDocument, createCustomer } from "@/lib/db/customer-repo";
 import { processSale, cancelSale } from "@/lib/loyalty/engine";
-import { getLoyaltySettings } from "@/lib/db/settings-repo";
 import { getDatabase } from "@/lib/db/db";
 import { syncFudoSales } from "@/lib/fudo/sync";
 import * as fudoClient from "@/lib/fudo/client";
@@ -11,7 +10,6 @@ async function main() {
   console.log("==================================================================\n");
 
   const db = getDatabase();
-  const settings = getLoyaltySettings();
 
   // Test Customer
   const testDoc = "99887766";
@@ -59,7 +57,7 @@ async function main() {
   });
   if (!sale1.sale) throw new Error("No se generó sale1");
 
-  let custAfterSale1 = findCustomerByDocument(testDoc)!;
+  const custAfterSale1 = findCustomerByDocument(testDoc)!;
   console.log("✔ Venta procesada:", {
     saleId: sale1.sale.id,
     pointsEarned: sale1.points_earned,
@@ -84,7 +82,7 @@ async function main() {
   const cancelResult1 = cancelSale(sale1.sale.id, "Error de mozo en mesa");
   console.log("Resultado anulación:", cancelResult1.message);
 
-  let custAfterCancel1 = findCustomerByDocument(testDoc)!;
+  const custAfterCancel1 = findCustomerByDocument(testDoc)!;
   console.log("Estado comensal tras anulación:", {
     points: custAfterCancel1.points_balance,
     visits: custAfterCancel1.visit_count,
@@ -135,7 +133,7 @@ async function main() {
   });
   if (!sale2.sale) throw new Error("No se generó sale2");
 
-  let custAfterSale2 = findCustomerByDocument(testDoc)!;
+  const custAfterSale2 = findCustomerByDocument(testDoc)!;
   console.log("✔ Venta mostrador procesada:", {
     saleId: sale2.sale.id,
     pointsEarned: sale2.points_earned,
@@ -150,7 +148,7 @@ async function main() {
 
   console.log("\n6. Anulando Venta 2 (debe descontar 80 puntos y NO modificar visitas)...");
   const cancelResult2 = cancelSale(sale2.sale.id, "Ticket cancelado en mostrador");
-  let custAfterCancel2 = findCustomerByDocument(testDoc)!;
+  const custAfterCancel2 = findCustomerByDocument(testDoc)!;
 
   console.log("Resultado:", {
     points_deducted: cancelResult2.points_deducted,
@@ -169,7 +167,7 @@ async function main() {
 
   const fudoSaleId = "FUDO_TEST_MOCK_SALE_777";
   // 7a. First ingest a sale that was CLOSED in Fudo
-  const fudoSaleInitial = processSale({
+  processSale({
     customerId: customer.id,
     totalAmount: 20000,
     source: "FUDO_API",
@@ -177,7 +175,7 @@ async function main() {
     saleType: "TABLE",
   });
 
-  let custWithFudoSale = findCustomerByDocument(testDoc)!;
+  const custWithFudoSale = findCustomerByDocument(testDoc)!;
   console.log("7a. Venta Fudo ingerida como cerrada:", {
     points: custWithFudoSale.points_balance,
     visits: custWithFudoSale.visit_count,

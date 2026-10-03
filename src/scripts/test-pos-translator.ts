@@ -1,7 +1,6 @@
 import { FudoTranslator } from "../lib/pos/adapters/fudo/fudo-translator";
-import { FudoAdapter } from "../lib/pos/adapters/fudo/fudo-adapter";
 import { posGateway } from "../lib/pos/core/pos-gateway";
-import { FudoRawSale, FudoRawCustomer, FudoRawCustomerAttributes } from "../lib/pos/adapters/fudo/types";
+import { FudoRawSale, FudoRawCustomerAttributes } from "../lib/pos/adapters/fudo/types";
 
 async function runTranslatorTests() {
   console.log("===============================================================");

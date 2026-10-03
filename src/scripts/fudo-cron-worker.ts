@@ -1,5 +1,5 @@
 import { getFudoConfig } from "../lib/db/fudo-repo";
-import { syncFudoSales, syncFudoCustomers } from "../lib/fudo/sync";
+import { syncFudoSales } from "../lib/fudo/sync";
 import { logCronExecution } from "../lib/db/cron-repo";
 
 async function runWorkerLoop() {
