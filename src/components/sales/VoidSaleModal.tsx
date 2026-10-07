@@ -171,47 +171,47 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-800 bg-dark-950/70 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-950/70 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+            <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400">
               <Ban className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="text-lg font-bold text-white tracking-tight">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Módulo de Anulación de Ventas
                 </h3>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
                   Rollback Atómico
                 </span>
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-500 dark:text-gray-400">
                 Búsqueda y anulación manual de tickets con reversión de puntos y visitas
               </p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search and Filters Bar */}
-        <div className="p-4 border-b border-dark-800 bg-dark-950/40 shrink-0 space-y-3">
+        <div className="p-4 border-b border-slate-200 dark:border-dark-800 bg-slate-50/50 dark:bg-dark-950/40 shrink-0 space-y-3">
           <form onSubmit={handleSearchSubmit} className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 dark:text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por Ticket #, Fudo ID, Nombre del comensal, DNI o Teléfono..."
-                className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-dark-900 border border-dark-750 text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors"
+                className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-750 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors"
               />
               {query && (
                 <button
@@ -220,7 +220,7 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
                     setQuery("");
                     fetchSales("", statusFilter);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white text-xs"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -244,15 +244,15 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
           {/* Filter Pills */}
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center space-x-2">
-              <Filter className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-gray-400 text-[11px] font-semibold">Estado:</span>
-              <div className="flex items-center space-x-1 p-0.5 bg-dark-900 rounded-lg border border-dark-800">
+              <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-gray-400" />
+              <span className="text-slate-500 dark:text-gray-400 text-[11px] font-semibold">Estado:</span>
+              <div className="flex items-center space-x-1 p-0.5 bg-slate-100 dark:bg-dark-900 rounded-lg border border-slate-200 dark:border-dark-800">
                 <button
                   onClick={() => setStatusFilter("ALL")}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
                     statusFilter === "ALL"
-                      ? "bg-dark-800 text-white border border-dark-700"
-                      : "text-gray-400 hover:text-white"
+                      ? "bg-white dark:bg-dark-800 text-slate-900 dark:text-white border border-slate-200 dark:border-dark-700 shadow-sm"
+                      : "text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   Todas
@@ -261,8 +261,8 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
                   onClick={() => setStatusFilter("CLOSED")}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
                     statusFilter === "CLOSED"
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                      : "text-gray-400 hover:text-white"
+                      ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                      : "text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   Activas / Cerradas
@@ -271,8 +271,8 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
                   onClick={() => setStatusFilter("CANCELED")}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
                     statusFilter === "CANCELED"
-                      ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                      : "text-gray-400 hover:text-white"
+                      ? "bg-red-500/20 text-red-700 dark:text-red-400 border border-red-500/30"
+                      : "text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   Anuladas
@@ -280,7 +280,7 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
               </div>
             </div>
 
-            <div className="text-gray-400 text-[11px]">
+            <div className="text-slate-500 dark:text-gray-400 text-[11px]">
               {sales.length} {sales.length === 1 ? "resultado" : "resultados"}
             </div>
           </div>
@@ -288,15 +288,15 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
 
         {/* Notifications */}
         {successNotice && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{successNotice}</span>
           </div>
         )}
 
         {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-300 text-xs flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -305,16 +305,16 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
         <div className="p-6 overflow-y-auto flex-1 space-y-3">
           {isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
-              <RefreshCw className="w-8 h-8 animate-spin text-red-400" />
-              <p className="text-sm text-gray-400">Consultando tickets de venta...</p>
+              <RefreshCw className="w-8 h-8 animate-spin text-red-500 dark:text-red-400" />
+              <p className="text-sm text-slate-500 dark:text-gray-400">Consultando tickets de venta...</p>
             </div>
           ) : sales.length === 0 ? (
             <div className="py-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-dark-950 border border-dark-800 flex items-center justify-center mx-auto text-gray-500">
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-800 flex items-center justify-center mx-auto text-slate-400 dark:text-gray-500">
                 <Receipt className="w-6 h-6" />
               </div>
-              <p className="text-sm text-gray-400">No se encontraron ventas para el criterio especificado.</p>
-              <p className="text-xs text-gray-500">Prueba ajustando el texto de búsqueda o el filtro de estado.</p>
+              <p className="text-sm text-slate-500 dark:text-gray-400">No se encontraron ventas para el criterio especificado.</p>
+              <p className="text-xs text-slate-400 dark:text-gray-500">Prueba ajustando el texto de búsqueda o el filtro de estado.</p>
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -325,69 +325,69 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
                     key={sale.id}
                     className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                       isCanceled
-                        ? "bg-dark-950/40 border-dark-800/80 opacity-75"
-                        : "bg-dark-950/80 border-dark-800 hover:border-dark-750"
+                        ? "bg-slate-50 dark:bg-dark-950/40 border-slate-200/60 dark:border-dark-800/80 opacity-75"
+                        : "bg-white dark:bg-dark-950/80 border-slate-200 dark:border-dark-800 hover:border-slate-300 dark:hover:border-dark-750 shadow-sm"
                     }`}
                   >
                     {/* Left: Info */}
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-white">
+                        <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                           #{sale.id.slice(0, 8)}
                         </span>
 
                         {sale.external_sale_id && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
                             Fudo #{sale.external_sale_id}
                           </span>
                         )}
 
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-dark-800 text-gray-300 border border-dark-700">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-gray-300 border border-slate-200 dark:border-dark-700">
                           {sale.source}
                         </span>
 
                         {isCanceled ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
                             Anulada
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                             Cerrada
                           </span>
                         )}
 
                         {sale.visit_added && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
                             +1 Visita
                           </span>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 pt-1">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-gray-400 pt-1">
                         <div className="flex items-center space-x-1">
-                          <User className="w-3.5 h-3.5 text-gray-500" />
-                          <span className={sale.customer_name ? "text-gray-200 font-medium" : "text-gray-500 italic"}>
+                          <User className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500" />
+                          <span className={sale.customer_name ? "text-slate-800 dark:text-gray-200 font-medium" : "text-slate-400 dark:text-gray-500 italic"}>
                             {sale.customer_name || "Sin Comensal Asignado"}
                           </span>
                           {sale.customer_doc && (
-                            <span className="text-[11px] text-gray-500">({sale.customer_doc})</span>
+                            <span className="text-[11px] text-slate-400 dark:text-gray-500">({sale.customer_doc})</span>
                           )}
                         </div>
 
-                        <div className="flex items-center space-x-1 text-gray-500">
-                          <Clock className="w-3 h-3" />
+                        <div className="flex items-center space-x-1 text-slate-400 dark:text-gray-500">
+                          <Clock className="w-3.5 h-3.5" />
                           <span>{formatDate(sale.sale_date)}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Right: Amounts and Actions */}
-                    <div className="flex items-center justify-between md:justify-end space-x-4 shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-dark-800">
+                    <div className="flex items-center justify-between md:justify-end space-x-4 shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-slate-200 dark:border-dark-800">
                       <div className="text-right">
-                        <div className={`text-sm font-bold ${isCanceled ? "line-through text-gray-500" : "text-white"}`}>
+                        <div className={`text-sm font-bold ${isCanceled ? "line-through text-slate-400 dark:text-gray-500" : "text-slate-900 dark:text-white"}`}>
                           ${sale.total_amount.toLocaleString("es-AR")}
                         </div>
-                        <div className="text-[11px] text-amber-400 font-semibold">
+                        <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
                           +{sale.points_earned} pts
                         </div>
                       </div>
@@ -398,13 +398,13 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
                             setSelectedSale(sale);
                             setActionError(null);
                           }}
-                          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 hover:border-red-600 text-xs font-bold transition-all shadow-sm"
+                          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white border border-red-500/30 hover:border-red-600 text-xs font-bold transition-all shadow-sm"
                         >
                           <Ban className="w-3.5 h-3.5" />
                           <span>Anular</span>
                         </button>
                       ) : (
-                        <span className="text-xs text-gray-500 italic px-2 py-1">
+                        <span className="text-xs text-slate-400 dark:text-gray-500 italic px-2 py-1">
                           Sin acciones
                         </span>
                       )}
@@ -417,13 +417,13 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-dark-800 bg-dark-950/70 shrink-0 flex items-center justify-between">
-          <div className="text-xs text-gray-500">
+        <div className="p-4 border-t border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-950/70 shrink-0 flex items-center justify-between">
+          <div className="text-xs text-slate-500 dark:text-gray-500">
             ℹ️ Al anular una venta, se descuentan los puntos emitidos y se retira el sello de visita.
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 text-xs font-semibold text-gray-300 transition-colors"
+            className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-dark-800 dark:hover:bg-dark-700 text-xs font-semibold text-slate-700 dark:text-gray-300 transition-colors"
           >
             Cerrar
           </button>
@@ -432,63 +432,63 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
 
       {/* Confirmation Sub-Modal */}
       {selectedSale && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-dark-900 border border-red-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-dark-800">
-              <div className="flex items-center space-x-2.5 text-red-400 font-bold">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 dark:bg-black/85 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-dark-900 border border-red-300 dark:border-red-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-dark-800">
+              <div className="flex items-center space-x-2.5 text-red-600 dark:text-red-400 font-bold">
                 <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/20">
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
                 </div>
                 <span>Confirmar Anulación de Venta</span>
               </div>
               <button
                 onClick={() => setSelectedSale(null)}
                 disabled={isSubmitting}
-                className="text-gray-400 hover:text-white p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-dark-950 border border-dark-800 space-y-2 text-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-800 space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-400">ID de Ticket:</span>
-                <span className="font-mono text-white font-bold">#{selectedSale.id}</span>
+                <span className="text-slate-500 dark:text-gray-400">ID de Ticket:</span>
+                <span className="font-mono text-slate-900 dark:text-white font-bold">#{selectedSale.id}</span>
               </div>
               {selectedSale.external_sale_id && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Fudo Sale ID:</span>
-                  <span className="text-sky-400 font-mono font-semibold">#{selectedSale.external_sale_id}</span>
+                  <span className="text-slate-500 dark:text-gray-400">Fudo Sale ID:</span>
+                  <span className="text-sky-600 dark:text-sky-400 font-mono font-semibold">#{selectedSale.external_sale_id}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-400">Comensal:</span>
-                <span className="text-white font-medium">
+                <span className="text-slate-500 dark:text-gray-400">Comensal:</span>
+                <span className="text-slate-900 dark:text-white font-medium">
                   {selectedSale.customer_name || "Sin comensal asignado"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Monto:</span>
-                <span className="text-white font-bold">${selectedSale.total_amount.toLocaleString("es-AR")}</span>
+                <span className="text-slate-500 dark:text-gray-400">Monto:</span>
+                <span className="text-slate-900 dark:text-white font-bold">${selectedSale.total_amount.toLocaleString("es-AR")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Puntos a descontar:</span>
-                <span className="text-amber-400 font-bold">-{selectedSale.points_earned} pts</span>
+                <span className="text-slate-500 dark:text-gray-400">Puntos a descontar:</span>
+                <span className="text-amber-600 dark:text-amber-400 font-bold">-{selectedSale.points_earned} pts</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Sello de visita:</span>
-                <span className={selectedSale.visit_added ? "text-red-400 font-semibold" : "text-gray-500"}>
+                <span className="text-slate-500 dark:text-gray-400">Sello de visita:</span>
+                <span className={selectedSale.visit_added ? "text-red-600 dark:text-red-400 font-semibold" : "text-slate-400 dark:text-gray-500"}>
                   {selectedSale.visit_added ? "Se descontará 1 visita" : "No acumuló visita"}
                 </span>
               </div>
             </div>
 
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-300">
+            <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-xs text-red-800 dark:text-red-300">
               <strong>Atención:</strong> Esta acción no se puede deshacer. Se descontarán los puntos del comensal y se revertirá el hito de visita en el motor de fidelización.
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-300">
+              <label className="text-xs font-semibold text-slate-700 dark:text-gray-300">
                 Motivo de anulación:
               </label>
               <input
@@ -497,12 +497,12 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="Ej: Comanda anulada en Fudo, error de facturación..."
                 disabled={isSubmitting}
-                className="w-full px-3 py-2 text-xs rounded-xl bg-dark-950 border border-dark-750 text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-red-500"
               />
             </div>
 
             {actionError && (
-              <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-xs text-red-200">
+              <div className="p-3 rounded-lg bg-red-100 dark:bg-red-500/20 border border-red-300 dark:border-red-500/30 text-xs text-red-800 dark:text-red-200">
                 {actionError}
               </div>
             )}
@@ -512,7 +512,7 @@ export function VoidSaleModal({ isOpen, onClose, onSaleCanceled }: VoidSaleModal
                 type="button"
                 onClick={() => setSelectedSale(null)}
                 disabled={isSubmitting}
-                className="flex-1 py-2.5 rounded-xl bg-dark-800 hover:bg-dark-700 text-xs font-semibold text-gray-300 transition-colors"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 text-xs font-semibold text-slate-700 dark:text-gray-300 transition-colors"
               >
                 Cancelar
               </button>

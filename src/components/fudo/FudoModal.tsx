@@ -247,36 +247,36 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
   const isDemo = apiKey.toUpperCase().startsWith("DEMO_") || !apiKey;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-6">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-800 bg-dark-950/70">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-950/70">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
+            <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-500 dark:text-sky-400">
               <Zap className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="text-lg font-bold text-white tracking-tight">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Integración API Fudo POS
                 </h3>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
                   RF-01 Ingesta
                 </span>
                 {isDemo && (
-                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                     Modo Sandbox
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-500 dark:text-gray-400">
                 Sincronización automatizada de ventas cerradas y comensales en tiempo real
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -286,8 +286,8 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           {isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
-              <RefreshCw className="w-8 h-8 animate-spin text-sky-400" />
-              <p className="text-sm text-gray-400">Cargando credenciales y estado de Fudo...</p>
+              <RefreshCw className="w-8 h-8 animate-spin text-sky-500 dark:text-sky-400" />
+              <p className="text-sm text-slate-500 dark:text-gray-400">Cargando credenciales y estado de Fudo...</p>
             </div>
           ) : (
             <>
@@ -296,8 +296,8 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                 <div
                   className={`p-4 rounded-xl border flex items-center space-x-3 ${
                     msg.type === "success"
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                      : "bg-red-500/10 border-red-500/30 text-red-400"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400"
+                      : "bg-red-50 border-red-200 text-red-800 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400"
                   }`}
                 >
                   {msg.type === "success" ? (
@@ -312,16 +312,16 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
               {/* Grid 2 Columns: Credentials & Actions */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Column 1: Config Form (7 cols) */}
-                <div className="lg:col-span-7 bg-dark-950/50 border border-dark-800 rounded-xl p-5 space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-dark-800">
-                    <div className="flex items-center space-x-2 text-sm font-semibold text-white">
-                      <Key className="w-4 h-4 text-sky-400" />
+                <div className="lg:col-span-7 bg-slate-50 dark:bg-dark-950/50 border border-slate-200 dark:border-dark-800 rounded-xl p-5 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-dark-800">
+                    <div className="flex items-center space-x-2 text-sm font-semibold text-slate-900 dark:text-white">
+                      <Key className="w-4 h-4 text-sky-500 dark:text-sky-400" />
                       <span>Credenciales API Fudo</span>
                     </div>
                     <button
                       type="button"
                       onClick={handleLoadDemoCredentials}
-                      className="inline-flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 transition-colors"
+                      className="inline-flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/20 transition-colors"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>Cargar Demo Sandbox</span>
@@ -331,7 +331,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                   <form onSubmit={handleSaveConfig} className="space-y-4">
                     {/* API Key */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-gray-300 mb-1">
                         API Key (Pública / Restaurante)
                       </label>
                       <input
@@ -339,13 +339,13 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         placeholder="Ej: DEMO_FUDO_KEY_RESTO99"
-                        className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-sky-500"
+                        className="w-full px-3 py-2 bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-sky-500"
                       />
                     </div>
 
                     {/* API Secret */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-gray-300 mb-1">
                         API Secret
                       </label>
                       <div className="relative">
@@ -354,12 +354,12 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                           value={apiSecret}
                           onChange={(e) => setApiSecret(e.target.value)}
                           placeholder="Ej: DEMO_FUDO_SECRET_XYZ888"
-                          className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 pr-10"
+                          className="w-full px-3 py-2 bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-sky-500 pr-10"
                         />
                         <button
                           type="button"
                           onClick={() => setShowSecret(!showSecret)}
-                          className="absolute right-2.5 top-2.5 text-gray-400 hover:text-white"
+                          className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white"
                         >
                           {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -369,10 +369,10 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                     {/* Base URL */}
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <label className="block text-xs font-medium text-gray-300">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-gray-300">
                           Base URL de la API REST Fudo
                         </label>
-                        <span className="text-[10px] text-gray-500 font-mono">
+                        <span className="text-[10px] text-slate-400 dark:text-gray-500 font-mono">
                           Auth: https://auth.fu.do/api
                         </span>
                       </div>
@@ -381,24 +381,24 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                         value={baseUrl}
                         onChange={(e) => setBaseUrl(e.target.value)}
                         placeholder="https://api.fu.do/v1alpha1"
-                        className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-sky-500 font-mono text-xs"
+                        className="w-full px-3 py-2 bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg text-sm text-slate-700 dark:text-gray-300 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-sky-500 font-mono text-xs"
                       />
-                      <p className="text-[11px] text-gray-500 mt-1">
-                        Endpoint oficial de datos: <code className="text-gray-400">https://api.fu.do/v1alpha1</code>. La autenticación se realiza de forma automática contra <code className="text-gray-400">https://auth.fu.do/api</code>.
+                      <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-1">
+                        Endpoint oficial de datos: <code className="text-slate-700 dark:text-gray-400">https://api.fu.do/v1alpha1</code>. La autenticación se realiza de forma automática contra <code className="text-slate-700 dark:text-gray-400">https://auth.fu.do/api</code>.
                       </p>
                     </div>
 
                     {/* Sync interval & Auto Sync */}
-                    <div className="pt-2 border-t border-dark-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="pt-2 border-t border-slate-200 dark:border-dark-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
                           id="autoSync"
                           checked={autoSync}
                           onChange={(e) => handleToggleAutoSync(e.target.checked)}
-                          className="w-4 h-4 rounded bg-dark-900 border-dark-700 text-sky-500 focus:ring-sky-500"
+                          className="w-4 h-4 rounded bg-white dark:bg-dark-900 border-slate-300 dark:border-dark-700 text-sky-500 focus:ring-sky-500"
                         />
-                        <label htmlFor="autoSync" className="text-xs font-medium text-gray-300 cursor-pointer">
+                        <label htmlFor="autoSync" className="text-xs font-medium text-slate-700 dark:text-gray-300 cursor-pointer">
                           Sincronización Periódica
                         </label>
                       </div>
@@ -408,7 +408,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                           value={syncInterval}
                           onChange={(e) => handleIntervalChange(Number(e.target.value))}
                           disabled={!autoSync}
-                          className="w-full px-2.5 py-1.5 bg-dark-900 border border-dark-700 rounded-lg text-xs text-white disabled:opacity-50"
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg text-xs text-slate-900 dark:text-white disabled:opacity-50"
                         >
                           <option value={2}>Cada 2 minutos (Pruebas / En vivo)</option>
                           <option value={5}>Cada 5 minutos (Recomendado)</option>
@@ -420,8 +420,8 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                       </div>
                     </div>
                     {autoSync && (
-                      <p className="text-[11px] text-emerald-400/90 pt-1 flex items-center space-x-1.5">
-                        <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400/90 pt-1 flex items-center space-x-1.5">
+                        <Sparkles className="w-3 h-3 text-emerald-500 dark:text-emerald-400 shrink-0" />
                         <span>Daemon activo: GastroBumeran actualizará comensales y ventas en segundo plano cada {syncInterval} minutos.</span>
                       </p>
                     )}
@@ -432,12 +432,12 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                         type="button"
                         onClick={handleTestConnection}
                         disabled={isTesting}
-                        className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-700 text-xs font-semibold text-white transition-all disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 dark:bg-dark-800 dark:hover:bg-dark-700 dark:border-dark-700 dark:text-white transition-all disabled:opacity-50"
                       >
                         {isTesting ? (
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <Server className="w-3.5 h-3.5 text-sky-400" />
+                          <Server className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
                         )}
                         <span>{isTesting ? "Verificando..." : "Probar Conexión"}</span>
                       </button>
@@ -462,21 +462,21 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                     <div
                       className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
                         testResult.success
-                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                          : "bg-red-500/10 border-red-500/30 text-red-300"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-300"
+                          : "bg-red-50 border-red-200 text-red-800 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300"
                       }`}
                     >
                       <div className="flex items-center space-x-2 font-bold">
                         {testResult.success ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         ) : (
-                          <AlertCircle className="w-4 h-4 text-red-400" />
+                          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                         )}
                         <span>{testResult.success ? "Autenticación Exitosa (HTTP 200)" : "Fallo de Autenticación"}</span>
                       </div>
-                      <p className="text-gray-300">{testResult.message || testResult.error}</p>
+                      <p className="text-slate-700 dark:text-gray-300">{testResult.message || testResult.error}</p>
                       {testResult.tokenPreview && (
-                        <div className="font-mono text-[11px] text-gray-400 bg-dark-900/80 p-2 rounded border border-dark-800 mt-1">
+                        <div className="font-mono text-[11px] text-slate-600 dark:text-gray-400 bg-slate-100 dark:bg-dark-900/80 p-2 rounded border border-slate-200 dark:border-dark-800 mt-1">
                           Token Bearer: {testResult.tokenPreview} (Válido 24hs)
                         </div>
                       )}
@@ -485,30 +485,30 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                 </div>
 
                 {/* Column 2: Trigger Sync & Ingestion Engine (5 cols) */}
-                <div className="lg:col-span-5 flex flex-col justify-between bg-dark-950/50 border border-dark-800 rounded-xl p-5 space-y-4">
+                <div className="lg:col-span-5 flex flex-col justify-between bg-slate-50 dark:bg-dark-950/50 border border-slate-200 dark:border-dark-800 rounded-xl p-5 space-y-4">
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-2 text-sm font-semibold text-white pb-2 border-b border-dark-800">
-                      <RefreshCw className="w-4 h-4 text-emerald-400" />
+                    <div className="flex items-center space-x-2 text-sm font-semibold text-slate-900 dark:text-white pb-2 border-b border-slate-200 dark:border-dark-800">
+                      <RefreshCw className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                       <span>Ingesta & Sincronización</span>
                     </div>
 
-                    <div className="text-xs text-gray-400 space-y-2">
+                    <div className="text-xs text-slate-500 dark:text-gray-400 space-y-2">
                       <p>
-                        Ejecuta la extracción de ventas con estado <code className="text-amber-300">CLOSED</code> desde Fudo,
+                        Ejecuta la extracción de ventas con estado <code className="text-amber-600 dark:text-amber-300">CLOSED</code> desde Fudo,
                         resolviendo clientes, acreditando puntos y sellos de visita.
                       </p>
-                      <div className="p-3 rounded-lg bg-dark-900 border border-dark-800 space-y-1">
-                        <div className="flex justify-between text-gray-400">
+                      <div className="p-3 rounded-lg bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-800 space-y-1">
+                        <div className="flex justify-between text-slate-500 dark:text-gray-400">
                           <span>Última sincronización:</span>
-                          <span className="text-white font-medium">
+                          <span className="text-slate-900 dark:text-white font-medium">
                             {config?.last_sync_at
                               ? new Date(config.last_sync_at).toLocaleString("es-AR")
                               : "Nunca"}
                           </span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-slate-500 dark:text-gray-400">
                           <span>Idempotencia:</span>
-                          <span className="text-emerald-400 font-medium">Activa (fudo_sale_id)</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">Activa (fudo_sale_id)</span>
                         </div>
                       </div>
                     </div>
@@ -520,9 +520,9 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                           id="syncCustomers"
                           checked={syncCustomers}
                           onChange={(e) => setSyncCustomers(e.target.checked)}
-                          className="w-4 h-4 rounded bg-dark-900 border-dark-700 text-sky-500 focus:ring-sky-500"
+                          className="w-4 h-4 rounded bg-white dark:bg-dark-900 border-slate-300 dark:border-dark-700 text-sky-500 focus:ring-sky-500"
                         />
-                        <label htmlFor="syncCustomers" className="text-xs text-gray-300 cursor-pointer">
+                        <label htmlFor="syncCustomers" className="text-xs text-slate-700 dark:text-gray-300 cursor-pointer">
                           Sincronizar directorio de clientes de Fudo
                         </label>
                       </div>
@@ -533,9 +533,9 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                           id="fullSync"
                           checked={fullSync}
                           onChange={(e) => setFullSync(e.target.checked)}
-                          className="w-4 h-4 rounded bg-dark-900 border-dark-700 text-sky-500 focus:ring-sky-500"
+                          className="w-4 h-4 rounded bg-white dark:bg-dark-900 border-slate-300 dark:border-dark-700 text-sky-500 focus:ring-sky-500"
                         />
-                        <label htmlFor="fullSync" className="text-xs text-gray-300 cursor-pointer">
+                        <label htmlFor="fullSync" className="text-xs text-slate-700 dark:text-gray-300 cursor-pointer">
                           Sincronización completa de ventas (ignorar fecha previa)
                         </label>
                       </div>
@@ -557,84 +557,84 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
 
               {/* Sync Execution Results Panel */}
               {syncResult && (
-                <div className="bg-dark-950 border border-emerald-500/30 rounded-xl p-5 space-y-4 animate-fade-in">
-                  <div className="flex items-center justify-between pb-3 border-b border-dark-800">
-                    <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
+                <div className="bg-white dark:bg-dark-950 border border-emerald-300 dark:border-emerald-500/30 rounded-xl p-5 space-y-4 animate-fade-in shadow-sm">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-dark-800">
+                    <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
                       <CheckCircle2 className="w-5 h-5" />
                       <span>Resultado de Ingesta Fudo API</span>
                     </div>
-                    <span className="text-xs text-gray-400 font-mono">
+                    <span className="text-xs text-slate-500 dark:text-gray-400 font-mono">
                       {new Date(syncResult.lastSyncAt).toLocaleTimeString("es-AR")}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
-                      <div className="flex items-center justify-center text-sky-400 mb-1">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-800 text-center">
+                      <div className="flex items-center justify-center text-sky-500 dark:text-sky-400 mb-1">
                         <Receipt className="w-4 h-4" />
                       </div>
-                      <div className="text-xl font-bold text-white">{syncResult.syncedCount}</div>
-                      <div className="text-[11px] text-gray-400">Ventas Ingeridas</div>
+                      <div className="text-xl font-bold text-slate-900 dark:text-white">{syncResult.syncedCount}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Ventas Ingeridas</div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
-                      <div className="flex items-center justify-center text-emerald-400 mb-1">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-800 text-center">
+                      <div className="flex items-center justify-center text-emerald-500 dark:text-emerald-400 mb-1">
                         <Users className="w-4 h-4" />
                       </div>
-                      <div className="text-xl font-bold text-white">{syncResult.newCustomersCount}</div>
-                      <div className="text-[11px] text-gray-400">Comensales Fudo</div>
+                      <div className="text-xl font-bold text-slate-900 dark:text-white">{syncResult.newCustomersCount}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Comensales Fudo</div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
-                      <div className="flex items-center justify-center text-amber-400 mb-1">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-800 text-center">
+                      <div className="flex items-center justify-center text-amber-500 dark:text-amber-400 mb-1">
                         <Coins className="w-4 h-4" />
                       </div>
-                      <div className="text-xl font-bold text-amber-400">+{syncResult.totalPointsEarned}</div>
-                      <div className="text-[11px] text-gray-400">Puntos Emitidos</div>
+                      <div className="text-xl font-bold text-amber-600 dark:text-amber-400">+{syncResult.totalPointsEarned}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Puntos Emitidos</div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
-                      <div className="flex items-center justify-center text-purple-400 mb-1">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-800 text-center">
+                      <div className="flex items-center justify-center text-purple-500 dark:text-purple-400 mb-1">
                         <ShieldCheck className="w-4 h-4" />
                       </div>
-                      <div className="text-xl font-bold text-gray-300">{syncResult.duplicatedCount}</div>
-                      <div className="text-[11px] text-gray-400">Duplicadas (Omitidas)</div>
+                      <div className="text-xl font-bold text-slate-700 dark:text-gray-300">{syncResult.duplicatedCount}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Duplicadas (Omitidas)</div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center">
-                      <div className="flex items-center justify-center text-amber-400 mb-1">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-800 text-center">
+                      <div className="flex items-center justify-center text-amber-500 dark:text-amber-400 mb-1">
                         <AlertCircle className="w-4 h-4" />
                       </div>
-                      <div className="text-xl font-bold text-amber-300">{syncResult.unassignedCount || 0}</div>
-                      <div className="text-[11px] text-gray-400">Sin Cliente Fudo</div>
+                      <div className="text-xl font-bold text-amber-600 dark:text-amber-300">{syncResult.unassignedCount || 0}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Sin Cliente Fudo</div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-dark-900 border border-dark-800 text-center col-span-2 sm:col-span-1">
-                      <div className="flex items-center justify-center text-emerald-400 mb-1">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-800 text-center col-span-2 sm:col-span-1">
+                      <div className="flex items-center justify-center text-emerald-500 dark:text-emerald-400 mb-1">
                         <Receipt className="w-4 h-4" />
                       </div>
-                      <div className="text-base font-bold text-emerald-400">
+                      <div className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                         ${syncResult.totalAmountProcessed.toLocaleString("es-AR")}
                       </div>
-                      <div className="text-[11px] text-gray-400">Facturación Total</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Facturación Total</div>
                     </div>
 
                     {syncResult.canceledCount !== undefined && syncResult.canceledCount > 0 && (
                       <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-center col-span-2 sm:col-span-1 animate-fade-in">
-                        <div className="flex items-center justify-center text-red-400 mb-1">
+                        <div className="flex items-center justify-center text-red-500 dark:text-red-400 mb-1">
                           <Ban className="w-4 h-4" />
                         </div>
-                        <div className="text-base font-bold text-red-400">
+                        <div className="text-base font-bold text-red-600 dark:text-red-400">
                           {syncResult.canceledCount}
                         </div>
-                        <div className="text-[11px] text-gray-400">Ventas Anuladas</div>
+                        <div className="text-[11px] text-slate-500 dark:text-gray-400">Ventas Anuladas</div>
                       </div>
                     )}
                   </div>
 
                   {syncResult.canceledCount !== undefined && syncResult.canceledCount > 0 && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-start space-x-2">
-                      <Ban className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-xs text-red-800 dark:text-red-300 flex items-start space-x-2">
+                      <Ban className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                       <span>
                         <strong>Anulaciones detectadas ({syncResult.canceledCount} venta(s)):</strong> Se detectaron ventas canceladas en Fudo. Se revirtieron atómicamente los puntos acumulados y las visitas en las cuentas de los comensales correspondientes.
                       </span>
@@ -642,8 +642,8 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                   )}
 
                   {syncResult.unassignedCount > 0 && (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300 flex items-start space-x-2">
-                      <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2">
+                      <Info className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
                       <span>
                         <strong>Atención ({syncResult.unassignedCount} venta(s) sin cliente):</strong> En Fudo, para que una venta cerrada sume puntos en GastroBumeran, el cajero o mozo debe tener asignado un cliente en la comanda/ticket de Fudo (o haber registrado su teléfono/DNI). Las ventas anónimas o a consumidor final no acumulan puntos.
                       </span>
@@ -651,7 +651,7 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                   )}
 
                   {syncResult.errors.length > 0 && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 space-y-1">
+                    <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-xs text-red-800 dark:text-red-300 space-y-1">
                       <div className="font-semibold">Advertencias / Excepciones detectadas:</div>
                       {syncResult.errors.map((e, idx) => (
                         <div key={idx}>• {e}</div>
@@ -659,8 +659,8 @@ export function FudoModal({ isOpen, onClose, onSyncCompleted }: FudoModalProps) 
                     </div>
                   )}
 
-                  <div className="flex items-center space-x-2 text-xs text-gray-400 bg-dark-900 p-2.5 rounded-lg border border-dark-800">
-                    <Info className="w-4 h-4 text-sky-400 shrink-0" />
+                  <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-gray-400 bg-slate-100 dark:bg-dark-900 p-2.5 rounded-lg border border-slate-200 dark:border-dark-800">
+                    <Info className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
                     <span>
                       Los puntos acreditados han generado nuevos lotes FIFO con caducidad a 365 días y reiniciado el Timer 1 (inactividad) a 90 días para cada comensal.
                     </span>

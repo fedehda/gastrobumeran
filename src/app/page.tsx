@@ -300,7 +300,7 @@ export default function PosPage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-dark-950 flex flex-col items-center justify-center space-y-3 text-gray-400">
+      <div className="min-h-screen bg-slate-50 dark:bg-dark-950 flex flex-col items-center justify-center space-y-3 text-slate-500 dark:text-gray-400">
         <div className="w-8 h-8 border-2 border-bumeran-500 border-t-transparent rounded-full animate-spin"></div>
         <p className="text-xs">Verificando sesión segura...</p>
       </div>
@@ -319,7 +319,7 @@ export default function PosPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-dark-950 text-gray-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-dark-950 text-slate-800 dark:text-gray-100 transition-colors duration-200">
       {/* Navigation Bar */}
       <Navbar
         user={currentUser}
@@ -372,9 +372,9 @@ export default function PosPage() {
 
         {/* Selected Customer View vs Empty State */}
         {isLoadingCustomer ? (
-          <div className="p-12 text-center rounded-2xl bg-dark-900/50 border border-dark-800 flex flex-col items-center justify-center space-y-3">
+          <div className="p-12 text-center rounded-2xl bg-white/70 dark:bg-dark-900/50 border border-slate-200 dark:border-dark-800 flex flex-col items-center justify-center space-y-3">
             <div className="w-8 h-8 border-2 border-bumeran-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm text-gray-400">Cargando perfil y saldo de fidelización...</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400">Cargando perfil y saldo de fidelización...</p>
           </div>
         ) : customerDetail ? (
           <div className="space-y-6">
@@ -427,36 +427,36 @@ export default function PosPage() {
         ) : (
           /* Empty State: Quick pick recent customers & system overview */
           <div className="space-y-6">
-            <div className="rounded-2xl bg-gradient-to-b from-dark-900/90 to-dark-950/80 border border-dark-800 p-8 text-center relative overflow-hidden shadow-card">
+            <div className="rounded-2xl bg-white dark:bg-gradient-to-b dark:from-dark-900/90 dark:to-dark-950/80 border border-slate-200 dark:border-dark-800 p-8 text-center relative overflow-hidden shadow-card transition-colors duration-200">
               <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-bumeran-500/10 rounded-full blur-3xl pointer-events-none" />
 
               <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-bumeran-600 to-amber-500 flex items-center justify-center text-white shadow-glow mb-4">
                 <Users className="w-7 h-7" />
               </div>
 
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                 Punto de Cobro & Caja de Fidelización
               </h2>
-              <p className="text-sm text-gray-400 max-w-lg mx-auto mb-6">
+              <p className="text-sm text-slate-600 dark:text-gray-400 max-w-lg mx-auto mb-6">
                 Ingresa el DNI, Teléfono o Nombre del comensal arriba para acumular puntos por consumo, sellar su visita o canjear recompensas del menú. También puedes importar lotes de ventas vía CSV desde la barra superior.
               </p>
 
               {/* Quick Comensales Frecuentes con Filtro por Pestañas */}
               <div className="max-w-3xl mx-auto">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-3">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                     Comensales en Sistema:
                   </div>
 
                   {/* Tabs Selector */}
-                  <div className="flex items-center p-1 rounded-xl bg-dark-950/80 border border-dark-800 text-xs">
+                  <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-dark-950/80 border border-slate-200 dark:border-dark-800 text-xs">
                     <button
                       type="button"
                       onClick={() => setCustomerTab("active")}
                       className={`px-3 py-1 rounded-lg font-semibold transition-all ${
                         customerTab === "active"
                           ? "bg-bumeran-500 text-white shadow-glow"
-                          : "text-gray-400 hover:text-white"
+                          : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       Activos en Fidelidad
@@ -467,7 +467,7 @@ export default function PosPage() {
                       className={`px-3 py-1 rounded-lg font-semibold transition-all ${
                         customerTab === "unenrolled"
                           ? "bg-amber-500 text-white shadow-glow"
-                          : "text-gray-400 hover:text-white"
+                          : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       No Adheridos (Fudo)
@@ -477,8 +477,8 @@ export default function PosPage() {
                       onClick={() => setCustomerTab("all")}
                       className={`px-3 py-1 rounded-lg font-semibold transition-all ${
                         customerTab === "all"
-                          ? "bg-dark-800 text-white border border-dark-700"
-                          : "text-gray-400 hover:text-white"
+                          ? "bg-white dark:bg-dark-800 text-slate-900 dark:text-white border border-slate-200 dark:border-dark-700 shadow-sm"
+                          : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       Todos
@@ -494,30 +494,30 @@ export default function PosPage() {
                         <button
                           key={c.id}
                           onClick={() => selectCustomer(c)}
-                          className="p-3 rounded-xl bg-dark-900 hover:bg-dark-850 border border-dark-750 hover:border-bumeran-500/50 text-left transition-all group flex items-center justify-between"
+                          className="p-3 rounded-xl bg-white dark:bg-dark-900 hover:bg-slate-50 dark:hover:bg-dark-850 border border-slate-200 dark:border-dark-750 hover:border-bumeran-500/50 text-left transition-all group flex items-center justify-between shadow-sm"
                         >
                           <div>
                             <div className="flex items-center space-x-1.5">
-                              <span className="text-xs font-bold text-white group-hover:text-bumeran-400 transition-colors">
+                              <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-bumeran-600 dark:group-hover:text-bumeran-400 transition-colors">
                                 {c.name}
                               </span>
                               {!isEnrolled && (
-                                <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                   No Adherido
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-gray-400 mt-0.5">
+                            <div className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
                               DNI: {c.document_number}
                             </div>
                           </div>
                           <div className="text-right">
                             {isEnrolled ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-bumeran-500/10 text-bumeran-400 text-[10px] font-bold">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-bumeran-500/10 text-bumeran-600 dark:text-bumeran-400 text-[10px] font-bold">
                                 {c.points_balance} pts
                               </span>
                             ) : (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400 text-[10px] font-medium">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 text-[10px] font-medium">
                                 0 pts
                               </span>
                             )}
@@ -527,7 +527,7 @@ export default function PosPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="p-6 rounded-xl bg-dark-950/40 border border-dark-800 text-xs text-gray-500 text-center">
+                  <div className="p-6 rounded-xl bg-slate-100 dark:bg-dark-950/40 border border-slate-200 dark:border-dark-800 text-xs text-slate-500 dark:text-gray-500 text-center">
                     {customerTab === "unenrolled"
                       ? "No hay comensales pendientes de adhesión. Todos los comensales registrados están activos en el programa."
                       : customerTab === "active"
@@ -540,32 +540,32 @@ export default function PosPage() {
 
             {/* Explanatory cards of Hybrid Core Engine */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-dark-900/60 border border-dark-800 backdrop-blur-sm">
-                <div className="flex items-center space-x-2 text-bumeran-400 font-bold text-sm mb-2">
+              <div className="p-4 rounded-xl bg-white/90 dark:bg-dark-900/60 border border-slate-200 dark:border-dark-800 backdrop-blur-sm shadow-sm">
+                <div className="flex items-center space-x-2 text-bumeran-600 dark:text-bumeran-400 font-bold text-sm mb-2">
                   <Award className="w-4 h-4" />
                   <span>1. Eje Puntos (Gasto)</span>
                 </div>
-                <p className="text-xs text-gray-400 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed">
                   Premia el volumen consumido: cada ${settings.points_earning_rate} otorga 1 punto acumulable para canjear por entradas, platos o bebidas.
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-dark-900/60 border border-dark-800 backdrop-blur-sm">
-                <div className="flex items-center space-x-2 text-amber-400 font-bold text-sm mb-2">
+              <div className="p-4 rounded-xl bg-white/90 dark:bg-dark-900/60 border border-slate-200 dark:border-dark-800 backdrop-blur-sm shadow-sm">
+                <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400 font-bold text-sm mb-2">
                   <Sparkles className="w-4 h-4" />
                   <span>2. Eje Visitas (Frecuencia)</span>
                 </div>
-                <p className="text-xs text-gray-400 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed">
                   Premia el retorno al local: tickets mayores a ${settings.min_spend_for_visit} computan +1 visita (con regla antifraude cooldown de {settings.visit_cooldown_hours}hs).
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-dark-900/60 border border-dark-800 backdrop-blur-sm">
-                <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm mb-2">
+              <div className="p-4 rounded-xl bg-white/90 dark:bg-dark-900/60 border border-slate-200 dark:border-dark-800 backdrop-blur-sm shadow-sm">
+                <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm mb-2">
                   <ShieldCheck className="w-4 h-4" />
                   <span>3. Modelo Dual Anti-Inflación</span>
                 </div>
-                <p className="text-xs text-gray-400 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed">
                   Timer 1 rolling de {settings.points_expiration_days}d + Timer 2 FIFO de {settings.points_lifetime_days}d. Cumpleaños con postre de cortesía de la casa.
                 </p>
               </div>

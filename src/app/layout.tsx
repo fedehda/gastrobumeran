@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { AutoSyncWatcher } from "@/components/fudo/AutoSyncWatcher";
 
 export const viewport: Viewport = {
@@ -27,10 +28,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="dark h-full">
-      <body className="min-h-full flex flex-col bg-dark-950 text-gray-100 antialiased selection:bg-bumeran-500 selection:text-white">
-        <AutoSyncWatcher />
-        {children}
+    <html lang="es" className="h-full" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem("gastrobumeran_theme");var d=window.matchMedia("(prefers-color-scheme: dark)").matches;if(s==="dark"||(!s&&d)){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark";}else{document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light";}}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-dark-950 text-slate-800 dark:text-gray-100 antialiased selection:bg-bumeran-500 selection:text-white transition-colors duration-200">
+        <ThemeProvider>
+          <AutoSyncWatcher />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

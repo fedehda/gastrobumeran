@@ -74,19 +74,19 @@ function RewardFormDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-lg bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-lg bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-800 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-800 bg-dark-950/70">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-950/70">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-bumeran-500/10 border border-bumeran-500/20 text-bumeran-400">
+            <div className="p-2.5 rounded-xl bg-bumeran-500/10 border border-bumeran-500/20 text-bumeran-500 dark:text-bumeran-400">
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 {rewardToEdit ? "Modificar Premio / Canje" : "Nuevo Premio o Canje"}
               </h3>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-500 dark:text-gray-400">
                 {rewardToEdit
                   ? "Edita las condiciones o puntos requeridos del beneficio"
                   : "Configura un nuevo plato, bebida o beneficio de fidelización"}
@@ -95,7 +95,7 @@ function RewardFormDialog({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -104,7 +104,7 @@ function RewardFormDialog({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center space-x-2">
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 text-xs flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -112,7 +112,7 @@ function RewardFormDialog({
 
           {/* Name */}
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
               Nombre de la Recompensa / Plato
             </label>
             <input
@@ -120,14 +120,14 @@ function RewardFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej: Hamburguesa Doble con Papas Rústicas"
-              className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500"
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-bumeran-500"
               required
             />
           </div>
 
           {/* Type Selector */}
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
               Mecánica de Canje / Tipo
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -139,8 +139,8 @@ function RewardFormDialog({
                 }}
                 className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center space-y-1 ${
                   rewardType === "POINTS"
-                    ? "bg-bumeran-600/20 border-bumeran-500 text-bumeran-400"
-                    : "bg-dark-950 border-dark-800 text-gray-400 hover:text-white"
+                    ? "bg-bumeran-50 dark:bg-bumeran-600/20 border-bumeran-500 text-bumeran-600 dark:text-bumeran-400"
+                    : "bg-white dark:bg-dark-950 border-slate-200 dark:border-dark-800 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <Coins className="w-4 h-4" />
@@ -155,8 +155,8 @@ function RewardFormDialog({
                 }}
                 className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center space-y-1 ${
                   rewardType === "VISIT_MILESTONE"
-                    ? "bg-purple-600/20 border-purple-500 text-purple-400"
-                    : "bg-dark-950 border-dark-800 text-gray-400 hover:text-white"
+                    ? "bg-purple-50 dark:bg-purple-600/20 border-purple-500 text-purple-600 dark:text-purple-400"
+                    : "bg-white dark:bg-dark-950 border-slate-200 dark:border-dark-800 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <Calendar className="w-4 h-4" />
@@ -171,8 +171,8 @@ function RewardFormDialog({
                 }}
                 className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center space-y-1 ${
                   rewardType === "BIRTHDAY_GIFT"
-                    ? "bg-amber-600/20 border-amber-500 text-amber-400"
-                    : "bg-dark-950 border-dark-800 text-gray-400 hover:text-white"
+                    ? "bg-amber-50 dark:bg-amber-600/20 border-amber-500 text-amber-600 dark:text-amber-400"
+                    : "bg-white dark:bg-dark-950 border-slate-200 dark:border-dark-800 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <Sparkles className="w-4 h-4" />
@@ -184,7 +184,7 @@ function RewardFormDialog({
           {/* Requirement value */}
           {rewardType !== "BIRTHDAY_GIFT" ? (
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
                 {rewardType === "POINTS" ? "Puntos Requeridos para Canje" : "Número de Visita Exigida (Hito)"}
               </label>
               <input
@@ -193,19 +193,19 @@ function RewardFormDialog({
                 step="1"
                 value={requirementValue}
                 onChange={(e) => setRequirementValue(Math.max(1, Number(e.target.value)))}
-                className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white focus:outline-none focus:border-bumeran-500 font-mono"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:border-bumeran-500 font-mono"
                 required
               />
             </div>
           ) : (
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
               Las cortesías de cumpleaños no requieren puntos (0 pts). Se habilitan automáticamente para comensales en su semana natalicia (con antifraude anual).
             </div>
           )}
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
               Descripción / Condiciones de Entrega
             </label>
             <textarea
@@ -213,7 +213,7 @@ function RewardFormDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ej: A elección de la carta dulce. Válido en salón."
               rows={2}
-              className="w-full px-3.5 py-2 bg-dark-950 border border-dark-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500"
+              className="w-full px-3.5 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-bumeran-500"
             />
           </div>
 
@@ -224,19 +224,19 @@ function RewardFormDialog({
               id="rewardActive"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="w-4 h-4 rounded bg-dark-950 border-dark-700 text-bumeran-500 focus:ring-bumeran-500"
+              className="w-4 h-4 rounded bg-white dark:bg-dark-950 border-slate-300 dark:border-dark-700 text-bumeran-500 focus:ring-bumeran-500"
             />
-            <label htmlFor="rewardActive" className="text-xs font-medium text-gray-300 cursor-pointer">
+            <label htmlFor="rewardActive" className="text-xs font-medium text-slate-700 dark:text-gray-300 cursor-pointer">
               Beneficio activo y disponible en el catálogo de caja
             </label>
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-dark-800">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-dark-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-750 text-xs font-semibold text-gray-300 transition-colors"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-750 text-xs font-semibold text-slate-700 dark:text-gray-300 transition-colors"
             >
               Cancelar
             </button>

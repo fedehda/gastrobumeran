@@ -212,6 +212,21 @@ GastroBumeran es una plataforma web full-stack diseñada para la retención y re
     - *Súper Domingo Salón (x3 Puntos, Dom 19:30 a 23:30, Salón)*
   - Interruptor toggle de activación/pausa instantánea, edición de reglas temporales y eliminación.
 
+### 15. Exclusión Estricta de Personas Jurídicas / CUITs de Empresas (Personas Humanas Exclusivas)
+- **Fundamento de Negocio:**
+  - El programa de fidelización premia y retiene exclusivamente a **personas humanas** (consumidores finales reales).
+  - Las cuentas corporativas, facturas A a empresas, razones sociales comerciales (SRL, SA, SAS) y entes estatales están formalmente excluidas de la emisión de puntos y recompensas.
+- **Detección Algorítmica AFIP / ARCA ([`cuit.ts`](src/lib/validation/cuit.ts)):**
+  - **Personas Jurídicas (Empresas):** CUITs de 11 dígitos con prefijos oficiales `30` (sociedades comerciales), `33` (entes públicos, bancos, instituciones), `34` (sociedades especiales) y `50`, `51`, `55` (personas jurídicas del exterior).
+  - **Personas Humanas Aprobadas (Sin falsos positivos):** DNIs tradicionales de 6 a 8 dígitos (incluso aquellos que inician con `30` o `33`, ej. `30.123.456`) y CUILs personales de 11 dígitos (prefijos `20`, `27`, `23`, `24`).
+- **Blindaje Multicapa en el Sistema:**
+  - **Repositorio de Clientes (`createCustomer`):** Bloqueo estricto a nivel de base de datos que rechaza el alta de CUITs jurídicos con excepción explicativa.
+  - **API REST (`POST /api/customers`):** Validación previa que responde con código HTTP 400 y mensaje descriptivo.
+  - **Alta en Caja POS (`NewCustomerModal`):** Validación reactiva en vivo en la interfaz de caja; si el operador tipea un CUIT corporativo, el formulario despliega una alerta explicativa y bloquea el botón de confirmación.
+  - **Pasarela POS / Fudo (`PosGateway`):** Omite clientes corporativos durante la sincronización de directorio (`syncCustomers`) y trata ventas con Factura A / CUIT empresarial como `UNASSIGNED` en `ingestCanonicalSale` (sin asignación de puntos ni alta errónea en fidelidad).
+  - **Importador Universal CSV (`processCsvBatch` & `CsvWizardModal`):** Filtra y omite automáticamente registros asociados a empresas, agrega la métrica *"Empresas Excluidas"* en las tarjetas KPI del resumen del lote e identifica las filas omitidas en el reporte interactivo.
+  - **Migración Segura Retroactiva:** Al inicializar la base de datos se desadscriben (`loyalty_enrolled = 0`) clientes históricos que registraban CUIT de empresa.
+
 ---
 
 ## 🏗️ Arquitectura Técnica

@@ -156,13 +156,13 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
   };
 
   return (
-    <div className="rounded-2xl bg-dark-900/90 border border-dark-750 p-5 backdrop-blur-xl shadow-card">
-      <div className="flex items-center justify-between pb-3 mb-4 border-b border-dark-800">
+    <div className="rounded-2xl bg-white dark:bg-dark-900/90 border border-slate-200 dark:border-dark-750 p-5 backdrop-blur-xl shadow-card transition-colors duration-200">
+      <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-dark-800">
         <div className="flex items-center space-x-2">
           <PlusCircle className="w-5 h-5 text-bumeran-500" />
-          <h3 className="font-bold text-white text-base">Carga Rápida de Venta / Consumo en Caja</h3>
+          <h3 className="font-bold text-slate-900 dark:text-white text-base">Carga Rápida de Venta / Consumo en Caja</h3>
         </div>
-        <span className="text-xs text-gray-400 font-medium">
+        <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">
           Tasa: 1 pt cada ${settings.points_earning_rate.toLocaleString("es-AR")}
         </span>
       </div>
@@ -170,7 +170,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Quick Amount Preset Chips */}
         <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-2">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-gray-400 mb-2">
             Montos Frecuentes de Ticket
           </label>
           <div className="flex flex-wrap gap-2">
@@ -182,7 +182,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
                   amount === val
                     ? "bg-bumeran-500 text-white border-bumeran-400 shadow-glow"
-                    : "bg-dark-950 hover:bg-dark-800 text-gray-300 border-dark-750"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 dark:bg-dark-950 dark:hover:bg-dark-800 dark:text-gray-300 dark:border-dark-750 shadow-sm"
                 }`}
               >
                 ${val.toLocaleString("es-AR")}
@@ -194,11 +194,11 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
         {/* Input Row: Amount & Concept */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-gray-400 mb-1.5">
               Importe Total de la Venta ($) *
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 font-bold">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-gray-400 font-bold">
                 $
               </div>
               <input
@@ -209,19 +209,19 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
                 onChange={(e) => setAmountStr(e.target.value)}
                 placeholder="0.00"
                 required
-                className="w-full pl-8 pr-4 py-2.5 bg-dark-950 border border-dark-750 focus:border-bumeran-500 rounded-xl text-white font-bold text-lg placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-bumeran-500/20 transition-all"
+                className="w-full pl-8 pr-4 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 focus:border-bumeran-500 rounded-xl text-slate-900 dark:text-white font-bold text-lg placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-bumeran-500/20 transition-all shadow-inner"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-gray-400 mb-1.5">
               Concepto / Punto de Despacho
             </label>
             <select
               value={concept}
               onChange={(e) => setConcept(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-750 focus:border-bumeran-500 rounded-xl text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-bumeran-500/20 transition-all"
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 focus:border-bumeran-500 rounded-xl text-slate-900 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-bumeran-500/20 transition-all shadow-sm"
             >
               <option value="Consumo Salón">Mesa / Salón Principal</option>
               <option value="Consumo Barra">Barra / Cocktails</option>
@@ -237,68 +237,68 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
           isEnrolled ? (
             <div className={`p-3.5 rounded-xl border flex flex-col space-y-2 text-xs ${
               matchingCampaign
-                ? "bg-gradient-to-r from-amber-950/60 via-dark-950 to-dark-950 border-amber-500/40 shadow-sm"
-                : "bg-gradient-to-r from-bumeran-950/40 via-dark-950 to-dark-950 border-bumeran-500/30"
+                ? "bg-amber-50/70 dark:bg-gradient-to-r dark:from-amber-950/60 dark:via-dark-950 dark:to-dark-950 border-amber-500/40 shadow-sm"
+                : "bg-orange-50/60 dark:bg-gradient-to-r dark:from-bumeran-950/40 dark:via-dark-950 dark:to-dark-950 border-bumeran-500/30 shadow-sm"
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   {matchingCampaign ? (
-                    <div className="flex items-center text-amber-300 font-bold text-sm">
-                      <Flame className="w-4 h-4 mr-1 text-amber-400 animate-pulse" />
+                    <div className="flex items-center text-amber-600 dark:text-amber-300 font-bold text-sm">
+                      <Flame className="w-4 h-4 mr-1 text-amber-500 animate-pulse" />
                       +{totalProjectedPoints} Puntos a acreditar
                     </div>
                   ) : (
-                    <div className="flex items-center text-bumeran-400 font-bold text-sm">
+                    <div className="flex items-center text-bumeran-600 dark:text-bumeran-400 font-bold text-sm">
                       <Award className="w-4 h-4 mr-1 text-bumeran-500" />
                       +{basePoints} Puntos a acreditar
                     </div>
                   )}
 
                   {matchingCampaign && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                       🔥 {matchingCampaign.campaign.name}
                     </span>
                   )}
                 </div>
 
-                <span className="text-emerald-400 font-medium">
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
                   Vencimiento +90 días
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-gray-300 pt-1 border-t border-dark-800">
+              <div className="flex flex-wrap items-center gap-3 text-slate-600 dark:text-gray-300 pt-1 border-t border-slate-200 dark:border-dark-800">
                 {matchingCampaign ? (
-                  <span className="text-amber-200/90 font-medium">
+                  <span className="text-amber-800 dark:text-amber-200/90 font-medium">
                     Desglose: <strong>+{basePoints}</strong> base + <strong>+{matchingCampaign.extraPoints}</strong> promo
                   </span>
                 ) : null}
 
-                {matchingCampaign && <div className="h-3 w-px bg-dark-750" />}
+                {matchingCampaign && <div className="h-3 w-px bg-slate-300 dark:bg-dark-750" />}
 
-                <div className="flex items-center text-gray-300">
+                <div className="flex items-center text-slate-600 dark:text-gray-300">
                   {!sectorAllowsVisit ? (
-                    <span className="text-amber-400/90 font-medium">
+                    <span className="text-amber-600 dark:text-amber-400/90 font-medium">
                       {isCounter ? "Mostrador" : isDelivery ? "Delivery" : "Salón"} no suma visita (según reglas)
                     </span>
                   ) : willAddVisit ? (
-                    <span className="text-emerald-400 font-semibold">✓ Sumará +1 Visita</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Sumará +1 Visita</span>
                   ) : isCooldownActive ? (
-                    <span className="text-gray-400 italic">Cooldown 18hs activo (no suma visita repetida)</span>
+                    <span className="text-slate-500 dark:text-gray-400 italic">Cooldown 18hs activo (no suma visita repetida)</span>
                   ) : (
-                    <span className="text-gray-500">Mínimo para visita: ${settings.min_spend_for_visit.toLocaleString("es-AR")}</span>
+                    <span className="text-slate-500 dark:text-gray-500">Mínimo para visita: ${settings.min_spend_for_visit.toLocaleString("es-AR")}</span>
                   )}
                 </div>
               </div>
             </div>
           ) : (
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-2 text-amber-300">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+              <div className="flex items-center space-x-2 text-amber-700 dark:text-amber-300">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400" />
                 <span>
                   <strong>Comensal no adherido:</strong> Esta venta se registrará contablemente pero <strong>no sumará puntos ni visitas</strong>.
                 </span>
               </div>
-              <span className="text-amber-400 font-bold shrink-0 ml-2">
+              <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0 ml-2">
                 +0 pts
               </span>
             </div>
@@ -307,7 +307,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
 
         {/* Error message */}
         {errorMsg && (
-          <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-red-400 text-xs flex items-center space-x-2">
+          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/40 text-red-700 dark:text-red-400 text-xs flex items-center space-x-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>

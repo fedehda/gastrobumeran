@@ -204,31 +204,31 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-800 bg-dark-950/70 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-950/70 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-500 dark:text-amber-400">
               <Flame className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="text-lg font-bold text-white tracking-tight">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Motor de Campañas Dinámicas
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                   Sprint F
                 </span>
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-500 dark:text-gray-400">
                 Multiplicadores x2, x3 y bonos por horarios de baja demanda, días valle o eventos especiales
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-dark-800 transition"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -239,21 +239,21 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
           <div
             className={`mx-6 mt-4 p-3.5 rounded-xl border flex items-center justify-between text-xs animate-fade-in ${
               feedback.type === "success"
-                ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                : "bg-red-950/40 border-red-500/40 text-red-300"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300"
+                : "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-500/40 text-red-800 dark:text-red-300"
             }`}
           >
             <div className="flex items-center space-x-2">
               {feedback.type === "success" ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400" />
               )}
               <span>{feedback.text}</span>
             </div>
             <button
               onClick={() => setFeedback(null)}
-              className="text-gray-400 hover:text-white"
+              className="text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -261,15 +261,15 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
         )}
 
         {/* Subheader: Presets & Controls */}
-        <div className="p-6 border-b border-dark-800 bg-dark-950/30 space-y-4 shrink-0">
+        <div className="p-6 border-b border-slate-200 dark:border-dark-800 bg-slate-50/50 dark:bg-dark-950/30 space-y-4 shrink-0">
           {/* Quick Presets Row */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-xs font-bold text-slate-700 dark:text-gray-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 <span>Plantillas Rápidas Gastronómicas (1-Click)</span>
               </span>
-              <span className="text-[11px] text-gray-500">
+              <span className="text-[11px] text-slate-400 dark:text-gray-500">
                 Haz clic para cargar y personalizar
               </span>
             </div>
@@ -279,12 +279,12 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
                   key={tmpl.name}
                   type="button"
                   onClick={() => handleApplyPreset(tmpl.template)}
-                  className="p-2.5 rounded-xl bg-dark-950 hover:bg-dark-800 border border-dark-800 hover:border-amber-500/40 transition text-left flex flex-col justify-between space-y-1 group"
+                  className="p-2.5 rounded-xl bg-white dark:bg-dark-950 hover:bg-slate-100 dark:hover:bg-dark-800 border border-slate-200 dark:border-dark-800 hover:border-amber-500/40 transition text-left flex flex-col justify-between space-y-1 group shadow-sm"
                 >
-                  <span className="text-xs font-bold text-gray-200 group-hover:text-amber-300 transition line-clamp-1">
+                  <span className="text-xs font-bold text-slate-800 dark:text-gray-200 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition line-clamp-1">
                     {tmpl.name}
                   </span>
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 w-max">
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 w-max">
                     {tmpl.badge}
                   </span>
                 </button>
@@ -294,11 +294,11 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
 
           {/* Action and Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <div className="flex items-center space-x-1.5 bg-dark-950 p-1 rounded-xl border border-dark-800 text-xs">
+            <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-dark-950 p-1 rounded-xl border border-slate-200 dark:border-dark-800 text-xs">
               <button
                 onClick={() => setFilter("all")}
                 className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  filter === "all" ? "bg-amber-500 text-dark-950" : "text-gray-400 hover:text-white"
+                  filter === "all" ? "bg-amber-500 text-slate-950" : "text-slate-600 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 Todas ({campaigns.length})
@@ -306,7 +306,7 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
               <button
                 onClick={() => setFilter("active")}
                 className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  filter === "active" ? "bg-amber-500 text-dark-950" : "text-gray-400 hover:text-white"
+                  filter === "active" ? "bg-amber-500 text-slate-950" : "text-slate-600 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 Activas ({campaigns.filter((c) => c.is_active).length})
@@ -314,7 +314,7 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
               <button
                 onClick={() => setFilter("paused")}
                 className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  filter === "paused" ? "bg-amber-500 text-dark-950" : "text-gray-400 hover:text-white"
+                  filter === "paused" ? "bg-amber-500 text-slate-950" : "text-slate-600 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 Pausadas ({campaigns.filter((c) => !c.is_active).length})
@@ -326,7 +326,7 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
                 setSelectedToEdit(null);
                 setIsFormOpen(true);
               }}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-dark-950 font-bold text-xs transition-all shadow-md flex items-center space-x-1.5"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs transition-all shadow-md flex items-center space-x-1.5"
             >
               <Plus className="w-4 h-4" />
               <span>Nueva Campaña</span>
@@ -338,17 +338,17 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
         <div className="flex-1 overflow-y-auto p-6 space-y-3">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16 space-y-3 text-center">
-              <RefreshCw className="w-6 h-6 text-amber-400 animate-spin" />
-              <p className="text-xs text-gray-400">Cargando motor de campañas dinámicas...</p>
+              <RefreshCw className="w-6 h-6 text-amber-500 dark:text-amber-400 animate-spin" />
+              <p className="text-xs text-slate-500 dark:text-gray-400">Cargando motor de campañas dinámicas...</p>
             </div>
           ) : filteredCampaigns.length === 0 ? (
-            <div className="text-center py-14 space-y-3 border border-dashed border-dark-800 rounded-2xl bg-dark-950/40">
-              <Flame className="w-10 h-10 text-gray-600 mx-auto" />
+            <div className="text-center py-14 space-y-3 border border-dashed border-slate-200 dark:border-dark-800 rounded-2xl bg-slate-50 dark:bg-dark-950/40">
+              <Flame className="w-10 h-10 text-slate-300 dark:text-gray-600 mx-auto" />
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-gray-300">
+                <p className="text-sm font-semibold text-slate-700 dark:text-gray-300">
                   No hay campañas {filter === "active" ? "activas" : filter === "paused" ? "pausadas" : "creadas"}.
                 </p>
-                <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                <p className="text-xs text-slate-500 dark:text-gray-500 max-w-sm mx-auto">
                   Crea tu primera campaña o activa una de las plantillas rápidas para incentivar el consumo.
                 </p>
               </div>
@@ -375,21 +375,21 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
                     key={camp.id}
                     className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3.5 relative overflow-hidden ${
                       camp.is_active
-                        ? "bg-dark-950/80 border-dark-750 hover:border-amber-500/40 shadow-sm"
-                        : "bg-dark-950/40 border-dark-800/60 opacity-60 hover:opacity-100"
+                        ? "bg-white dark:bg-dark-950/80 border-slate-200 dark:border-dark-750 hover:border-amber-500/40 shadow-sm"
+                        : "bg-slate-50 dark:bg-dark-950/40 border-slate-200/60 dark:border-dark-800/60 opacity-60 hover:opacity-100"
                     }`}
                   >
                     {/* Top Row: Title, Badges, Switch */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center space-x-2">
-                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
                             <span>{camp.name}</span>
                           </h4>
                         </div>
                         {camp.description && (
-                          <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-slate-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
                             {camp.description}
                           </p>
                         )}
@@ -397,12 +397,12 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
 
                       <div className="shrink-0 flex flex-col items-end gap-1.5">
                         {camp.multiplier > 1.0 && (
-                          <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-dark-950 font-black text-xs shadow-sm">
+                          <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs shadow-sm">
                             x{camp.multiplier} Pts
                           </span>
                         )}
                         {camp.bonus_points > 0 && (
-                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-[10px]">
+                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-bold text-[10px]">
                             +{camp.bonus_points} pts
                           </span>
                         )}
@@ -410,15 +410,15 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
                     </div>
 
                     {/* Metadata Chips */}
-                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-dark-800/80 text-[11px] text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-dark-800/80 text-[11px] text-slate-500 dark:text-gray-400">
                       <div className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500" />
                         <span>{daysText}</span>
                       </div>
 
                       {(camp.start_time || camp.end_time) && (
                         <div className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-gray-500" />
+                          <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500" />
                           <span>
                             {camp.start_time || "00:00"} - {camp.end_time || "23:59"} hs
                           </span>
@@ -426,29 +426,29 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
                       )}
 
                       <div className="flex items-center gap-1">
-                        <Layers className="w-3.5 h-3.5 text-gray-500" />
-                        <span className="text-amber-400 font-medium">{sectorLabel}</span>
+                        <Layers className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500" />
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">{sectorLabel}</span>
                       </div>
 
                       {camp.min_spend > 0 && (
-                        <span className="text-gray-400">
+                        <span className="text-slate-500 dark:text-gray-400">
                           Mín: ${camp.min_spend.toLocaleString("es-AR")}
                         </span>
                       )}
 
-                      <span className="text-[10px] text-gray-500 ml-auto">
+                      <span className="text-[10px] text-slate-400 dark:text-gray-500 ml-auto">
                         Prioridad {camp.priority}
                       </span>
                     </div>
 
                     {/* Footer Actions: Active Toggle, Edit, Delete */}
-                    <div className="pt-2 border-t border-dark-800 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-100 dark:border-dark-800 flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(camp)}
                           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            camp.is_active ? "bg-amber-500" : "bg-dark-700"
+                            camp.is_active ? "bg-amber-500" : "bg-slate-300 dark:bg-dark-700"
                           }`}
                         >
                           <span
@@ -457,9 +457,9 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
                             }`}
                           />
                         </button>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-slate-500 dark:text-gray-400">
                           {camp.is_active ? (
-                            <span className="text-amber-400 font-semibold">Activa</span>
+                            <span className="text-amber-600 dark:text-amber-400 font-semibold">Activa</span>
                           ) : (
                             "Pausada"
                           )}
@@ -472,14 +472,14 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
                             setSelectedToEdit(camp);
                             setIsFormOpen(true);
                           }}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-800 transition"
                           title="Modificar campaña"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(camp)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-950/30 transition"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
                           title="Eliminar campaña"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -494,13 +494,13 @@ export function CampaignsModal({ isOpen, onClose }: CampaignsModalProps) {
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 border-t border-dark-800 bg-dark-950/70 flex items-center justify-between text-xs text-gray-400 shrink-0">
+        <div className="px-6 py-3.5 border-t border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-950/70 flex items-center justify-between text-xs text-slate-500 dark:text-gray-400 shrink-0">
           <span>
             {campaigns.filter((c) => c.is_active).length} activas de {campaigns.length} campañas
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-750 text-white font-medium transition"
+            className="px-4 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-dark-800 dark:hover:bg-dark-750 text-slate-800 dark:text-white font-medium transition"
           >
             Cerrar
           </button>

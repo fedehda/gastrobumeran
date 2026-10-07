@@ -132,19 +132,19 @@ function CampaignFormDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-xl bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-800 rounded-2xl shadow-2xl overflow-hidden my-8">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-800 bg-dark-950/70">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-950/70">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400">
               <Flame className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 {campaignToEdit ? "Modificar Campaña Dinámica" : "Nueva Campaña Promocional"}
               </h3>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-500 dark:text-gray-400">
                 {campaignToEdit
                   ? "Actualiza reglas temporales, multiplicadores y canales"
                   : "Crea multiplicadores para horarios valle, días de baja demanda o eventos"}
@@ -153,7 +153,7 @@ function CampaignFormDialog({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -162,7 +162,7 @@ function CampaignFormDialog({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {errorMsg && (
-            <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2">
+            <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/40 text-red-800 dark:text-red-300 text-xs flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -171,7 +171,7 @@ function CampaignFormDialog({
           {/* Name & Description */}
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
                 Nombre de la Campaña *
               </label>
               <input
@@ -180,12 +180,12 @@ function CampaignFormDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej. Happy Hour After Office (x2)"
                 required
-                className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-750 focus:border-amber-500 rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all placeholder-gray-600"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 focus:border-amber-500 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all placeholder-slate-400 dark:placeholder-gray-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
                 Descripción / Beneficio Visible para el Cliente
               </label>
               <textarea
@@ -193,15 +193,15 @@ function CampaignFormDialog({
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
                 placeholder="Ej. Doble puntos en consumos de salón entre las 18:00 y las 20:30 hs de lunes a viernes."
-                className="w-full px-3.5 py-2 bg-dark-950 border border-dark-750 focus:border-amber-500 rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all placeholder-gray-600 resize-none"
+                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 focus:border-amber-500 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all placeholder-slate-400 dark:placeholder-gray-600 resize-none"
               />
             </div>
           </div>
 
           {/* Multiplier & Fixed Bonus Points */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div className="p-3 rounded-xl bg-dark-950 border border-dark-800 space-y-1.5">
-              <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-800 space-y-1.5">
+              <label className="block text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" />
                 <span>Multiplicador de Puntos</span>
               </label>
@@ -213,17 +213,17 @@ function CampaignFormDialog({
                   max="10.0"
                   value={multiplier}
                   onChange={(e) => setMultiplier(parseFloat(e.target.value) || 1.0)}
-                  className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-white font-black text-base focus:border-amber-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg text-slate-900 dark:text-white font-black text-base focus:border-amber-500 focus:outline-none"
                 />
-                <span className="text-xs font-bold text-gray-400 shrink-0">x base</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-gray-400 shrink-0">x base</span>
               </div>
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-slate-500 dark:text-gray-400">
                 Ej: 2.0 = Doble puntos, 1.5 = +50% extra.
               </p>
             </div>
 
-            <div className="p-3 rounded-xl bg-dark-950 border border-dark-800 space-y-1.5">
-              <label className="block text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-800 space-y-1.5">
+              <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Puntos Fijos Adicionales (Bonus)</span>
               </label>
@@ -234,42 +234,42 @@ function CampaignFormDialog({
                   min="0"
                   value={bonusPoints}
                   onChange={(e) => setBonusPoints(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-white font-black text-base focus:border-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg text-slate-900 dark:text-white font-black text-base focus:border-emerald-500 focus:outline-none"
                 />
-                <span className="text-xs font-bold text-gray-400 shrink-0">+ pts</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-gray-400 shrink-0">+ pts</span>
               </div>
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-slate-500 dark:text-gray-400">
                 Puntos directos que se suman además del multiplicador.
               </p>
             </div>
           </div>
 
           {/* Days of Week Selector */}
-          <div className="p-3.5 rounded-xl bg-dark-950 border border-dark-800 space-y-2.5">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-800 space-y-2.5">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-gray-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 <span>Días de Aplicación Semanal *</span>
               </label>
               <div className="flex items-center gap-1.5 text-[10px]">
                 <button
                   type="button"
                   onClick={selectAllDays}
-                  className="px-2 py-0.5 rounded bg-dark-800 hover:bg-dark-700 text-gray-300"
+                  className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-700 dark:text-gray-300"
                 >
                   Todos
                 </button>
                 <button
                   type="button"
                   onClick={selectWeekdays}
-                  className="px-2 py-0.5 rounded bg-dark-800 hover:bg-dark-700 text-gray-300"
+                  className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-700 dark:text-gray-300"
                 >
                   Lun-Vie
                 </button>
                 <button
                   type="button"
                   onClick={selectWeekends}
-                  className="px-2 py-0.5 rounded bg-dark-800 hover:bg-dark-700 text-gray-300"
+                  className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-700 dark:text-gray-300"
                 >
                   Sáb-Dom
                 </button>
@@ -286,8 +286,8 @@ function CampaignFormDialog({
                     onClick={() => toggleDay(day.value)}
                     className={`py-2 rounded-lg text-xs font-bold transition-all text-center border ${
                       isSelected
-                        ? "bg-amber-500 text-dark-950 border-amber-400 shadow-sm"
-                        : "bg-dark-900 hover:bg-dark-850 text-gray-400 border-dark-750"
+                        ? "bg-amber-500 text-slate-950 border-amber-400 shadow-sm"
+                        : "bg-white dark:bg-dark-900 hover:bg-slate-100 dark:hover:bg-dark-850 text-slate-600 dark:text-gray-400 border-slate-200 dark:border-dark-750"
                     }`}
                   >
                     {day.short}
@@ -300,76 +300,76 @@ function CampaignFormDialog({
           {/* Time Window (HH:mm) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-gray-400" />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-slate-400 dark:text-gray-400" />
                 <span>Hora Inicio (opcional)</span>
               </label>
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none"
               />
-              <span className="text-[10px] text-gray-500">Ej: 18:00</span>
+              <span className="text-[10px] text-slate-400 dark:text-gray-500">Ej: 18:00</span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-gray-400" />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-slate-400 dark:text-gray-400" />
                 <span>Hora Fin (opcional)</span>
               </label>
               <input
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none"
               />
-              <span className="text-[10px] text-gray-500">Ej: 20:30 (deja vacío para todo el día)</span>
+              <span className="text-[10px] text-slate-400 dark:text-gray-500">Ej: 20:30 (deja vacío para todo el día)</span>
             </div>
           </div>
 
           {/* Date Window (YYYY-MM-DD, optional) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-gray-400" />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-slate-400 dark:text-gray-400" />
                 <span>Fecha Inicio de Vigencia (opcional)</span>
               </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none"
               />
-              <span className="text-[10px] text-gray-500">Válida desde esta fecha</span>
+              <span className="text-[10px] text-slate-400 dark:text-gray-500">Válida desde esta fecha</span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-gray-400" />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-slate-400 dark:text-gray-400" />
                 <span>Fecha Fin de Vigencia (opcional)</span>
               </label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none"
               />
-              <span className="text-[10px] text-gray-500">Válida hasta esta fecha (o indefinida)</span>
+              <span className="text-[10px] text-slate-400 dark:text-gray-500">Válida hasta esta fecha (o indefinida)</span>
             </div>
           </div>
 
           {/* Sectors & Minimum Spend */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center gap-1">
-                <Layers className="w-3 h-3 text-gray-400" />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                <Layers className="w-3 h-3 text-slate-400 dark:text-gray-400" />
                 <span>Canal / Sector de Venta</span>
               </label>
               <select
                 value={applicableSectors}
                 onChange={(e) => setApplicableSectors(e.target.value as CampaignSector)}
-                className="w-full px-3 py-2.5 bg-dark-950 border border-dark-750 rounded-xl text-gray-200 text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 rounded-xl text-slate-800 dark:text-gray-200 text-sm focus:border-amber-500 focus:outline-none"
               >
                 <option value="ALL">Todos los Canales</option>
                 <option value="TABLE">Salón / Mesas</option>
@@ -379,7 +379,7 @@ function CampaignFormDialog({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
                 Gasto Mínimo Requerido ($)
               </label>
               <input
@@ -389,16 +389,16 @@ function CampaignFormDialog({
                 value={minSpend}
                 onChange={(e) => setMinSpend(parseFloat(e.target.value) || 0)}
                 placeholder="0"
-                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none"
               />
-              <span className="text-[10px] text-gray-500">0 = Sin mínimo requerido</span>
+              <span className="text-[10px] text-slate-400 dark:text-gray-500">0 = Sin mínimo requerido</span>
             </div>
           </div>
 
           {/* Priority & Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
                 Prioridad de Desempate (1 a 10)
               </label>
               <input
@@ -407,15 +407,15 @@ function CampaignFormDialog({
                 max="10"
                 value={priority}
                 onChange={(e) => setPriority(parseInt(e.target.value, 10) || 1)}
-                className="w-full px-3 py-2 bg-dark-950 border border-dark-750 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-750 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none"
               />
-              <span className="text-[10px] text-gray-500">Mayor prioridad gana si hay superposición</span>
+              <span className="text-[10px] text-slate-400 dark:text-gray-500">Mayor prioridad gana si hay superposición</span>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-dark-950 border border-dark-800">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-800">
               <div>
-                <span className="block text-xs font-bold text-white">Estado de la Campaña</span>
-                <span className="text-[11px] text-gray-400">
+                <span className="block text-xs font-bold text-slate-900 dark:text-white">Estado de la Campaña</span>
+                <span className="text-[11px] text-slate-500 dark:text-gray-400">
                   {isActive ? "Activa (evalúa en caja y Fudo)" : "Pausada temporalmente"}
                 </span>
               </div>
@@ -423,7 +423,7 @@ function CampaignFormDialog({
                 type="button"
                 onClick={() => setIsActive(!isActive)}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isActive ? "bg-amber-500" : "bg-dark-700"
+                  isActive ? "bg-amber-500" : "bg-slate-300 dark:bg-dark-700"
                 }`}
               >
                 <span
@@ -436,22 +436,22 @@ function CampaignFormDialog({
           </div>
 
           {/* Actions */}
-          <div className="pt-4 border-t border-dark-800 flex items-center justify-end space-x-3">
+          <div className="pt-4 border-t border-slate-200 dark:border-dark-800 flex items-center justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-dark-800 hover:bg-dark-750 text-gray-300 text-xs font-semibold transition-colors"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-750 text-slate-700 dark:text-gray-300 text-xs font-semibold transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-dark-950 text-xs font-bold transition-all shadow-md flex items-center space-x-1.5 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-bold transition-all shadow-md flex items-center space-x-1.5 disabled:opacity-50"
             >
               {isSaving ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-dark-950 border-t-transparent rounded-full animate-spin"></span>
+                  <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
                   <span>Guardando...</span>
                 </>
               ) : (

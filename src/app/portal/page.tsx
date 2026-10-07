@@ -19,6 +19,7 @@ import { CustomerRewardsCatalog } from "@/components/portal/CustomerRewardsCatal
 import { CustomerHistoryList } from "@/components/portal/CustomerHistoryList";
 import { PortalLoginPrompt } from "@/components/portal/PortalLoginPrompt";
 import { ActiveCampaignsBanner } from "@/components/portal/ActiveCampaignsBanner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function PortalContent() {
   const searchParams = useSearchParams();
@@ -171,19 +172,19 @@ function PortalContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070a11] text-gray-100 flex flex-col justify-between selection:bg-amber-500 selection:text-dark-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070a11] text-slate-800 dark:text-gray-100 flex flex-col justify-between selection:bg-amber-500 selection:text-white dark:selection:text-dark-950">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-30 bg-dark-950/80 backdrop-blur-xl border-b border-gray-800/80 px-4 py-3">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-dark-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-gray-800/80 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-dark-950 font-black shadow-md shadow-amber-500/20">
               <span>🔁</span>
             </div>
             <div>
-              <span className="text-sm font-extrabold text-white tracking-tight">
+              <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">
                 GastroBumeran
               </span>
-              <span className="text-[10px] text-amber-400 font-bold ml-1.5 uppercase">
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold ml-1.5 uppercase">
                 Mi Tarjeta
               </span>
             </div>
@@ -191,10 +192,12 @@ function PortalContent() {
 
           {/* Header Action Buttons */}
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+
             {deferredPrompt && (
               <button
                 onClick={handleInstallPwa}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold transition"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 dark:border-amber-500/40 text-xs font-semibold transition"
                 title="Instalar como app en tu teléfono"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -206,18 +209,18 @@ function PortalContent() {
               <>
                 <button
                   onClick={handleShareCard}
-                  className="p-2 rounded-xl bg-dark-900 hover:bg-dark-800 text-gray-300 hover:text-white border border-gray-800 transition"
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-900 dark:hover:bg-dark-800 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-gray-800 transition"
                   title="Compartir enlace de tarjeta"
                 >
                   {copiedLink ? (
-                    <Check className="w-4 h-4 text-emerald-400" />
+                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Share2 className="w-4 h-4 text-amber-400" />
+                    <Share2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   )}
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-xl bg-dark-900 hover:bg-red-950/40 text-gray-400 hover:text-red-300 border border-gray-800 hover:border-red-500/40 transition"
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 dark:bg-dark-900 dark:hover:bg-red-950/40 text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-300 border border-slate-200 dark:border-gray-800 hover:border-red-300 dark:hover:border-red-500/40 transition"
                   title="Cambiar de tarjeta / Salir"
                 >
                   <LogOut className="w-4 h-4" />
@@ -226,7 +229,7 @@ function PortalContent() {
             ) : (
               <Link
                 href="/"
-                className="text-xs text-gray-400 hover:text-amber-300 transition flex items-center gap-1"
+                className="text-xs text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-300 transition flex items-center gap-1"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Acceso Admin</span>
@@ -240,10 +243,10 @@ function PortalContent() {
       <main className="flex-1 max-w-2xl w-full mx-auto p-4 sm:p-6 space-y-6">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 animate-spin">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-500 dark:text-amber-400 animate-spin">
               <Sparkles className="w-6 h-6" />
             </div>
-            <p className="text-sm font-semibold text-gray-300">
+            <p className="text-sm font-semibold text-slate-600 dark:text-gray-300">
               Cargando tu tarjeta de beneficios...
             </p>
           </div>
@@ -298,11 +301,11 @@ function PortalContent() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800/80 bg-dark-950/60 py-6 px-4 text-center text-xs text-gray-500 space-y-1">
-        <p className="font-medium text-gray-400">
+      <footer className="border-t border-slate-200 dark:border-gray-800/80 bg-white/60 dark:bg-dark-950/60 py-6 px-4 text-center text-xs text-slate-500 dark:text-gray-500 space-y-1">
+        <p className="font-medium text-slate-600 dark:text-gray-400">
           GastroBumeran • Tarjeta Digital de Fidelización
         </p>
-        <p className="text-[11px] text-gray-600">
+        <p className="text-[11px] text-slate-400 dark:text-gray-600">
           Tus puntos se mantienen vigentes por 90 días con cada visita.
         </p>
       </footer>
@@ -314,7 +317,7 @@ export default function PortalPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#070a11] flex items-center justify-center text-amber-400">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#070a11] flex items-center justify-center text-amber-500 dark:text-amber-400">
           <Sparkles className="w-8 h-8 animate-spin" />
         </div>
       }

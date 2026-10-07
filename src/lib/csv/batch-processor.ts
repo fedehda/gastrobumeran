@@ -2,6 +2,7 @@ import Papa from "papaparse";
 import { normalizeAmount, normalizeDocument, parseSaleDate, CsvFieldMapping, CsvBatchProcessSummary, CsvProcessRowResult } from "./parser";
 import { processSale } from "@/lib/loyalty/engine";
 import { findCustomerByDocument } from "@/lib/db/customer-repo";
+import { isLegalEntityCuit } from "@/lib/validation/cuit";
 import crypto from "crypto";
 
 export interface ProcessCsvBatchOptions {
@@ -31,6 +32,7 @@ export function processCsvBatch({
   let errorCount = 0;
   let duplicatedCount = 0;
   let newCustomersCount = 0;
+  let skippedCompaniesCount = 0;
   let totalPointsEarned = 0;
   let totalAmountProcessed = 0;
 
@@ -61,6 +63,20 @@ export function processCsvBatch({
         rowNumber,
         success: false,
         error: "Columna de DNI/Identificador vacía o inválida",
+      });
+      continue;
+    }
+
+    if (isLegalEntityCuit(doc)) {
+      skippedCompaniesCount++;
+      results.push({
+        rowNumber,
+        success: false,
+        externalSaleId,
+        customerName: name || `Empresa CUIT ${doc}`,
+        documentNumber: doc,
+        totalAmount: amount,
+        error: "Omitido: CUIT de Persona Jurídica (Empresa). El programa de fidelización es exclusivo para personas humanas.",
       });
       continue;
     }
@@ -140,6 +156,7 @@ export function processCsvBatch({
     errorCount,
     duplicatedCount,
     newCustomersCount,
+    skippedCompaniesCount,
     totalPointsEarned,
     totalAmountProcessed,
     results,

@@ -115,18 +115,18 @@ export function RewardsManager() {
   });
 
   return (
-    <div className="bg-dark-900 border border-dark-800 rounded-2xl p-5 shadow-xl space-y-5 animate-fade-in">
+    <div className="bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-800 rounded-2xl p-5 shadow-xl space-y-5 animate-fade-in">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-dark-800">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-bumeran-500/10 border border-bumeran-500/20 text-bumeran-400">
+          <div className="p-2.5 rounded-xl bg-bumeran-500/10 border border-bumeran-500/20 text-bumeran-500 dark:text-bumeran-400">
             <Award className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white tracking-tight">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
               Gestor de Catálogo de Premios & Canjes (CRUD)
             </h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-500 dark:text-gray-400">
               Crea, modifica y pausa los beneficios canjeables por puntos, visitas o cumpleaños
             </p>
           </div>
@@ -134,11 +134,11 @@ export function RewardsManager() {
 
         <div className="flex items-center space-x-3">
           {/* Filters */}
-          <div className="flex rounded-xl bg-dark-950 p-1 border border-dark-800 text-xs">
+          <div className="flex rounded-xl bg-slate-100 dark:bg-dark-950 p-1 border border-slate-200 dark:border-dark-800 text-xs">
             <button
               onClick={() => setFilter("all")}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                filter === "all" ? "bg-dark-800 text-white" : "text-gray-400 hover:text-white"
+                filter === "all" ? "bg-white dark:bg-dark-800 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               Todos ({rewards.length})
@@ -146,7 +146,7 @@ export function RewardsManager() {
             <button
               onClick={() => setFilter("active")}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                filter === "active" ? "bg-dark-800 text-emerald-400" : "text-gray-400 hover:text-white"
+                filter === "active" ? "bg-white dark:bg-dark-800 text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               Activos ({rewards.filter((r) => r.is_active).length})
@@ -154,7 +154,7 @@ export function RewardsManager() {
             <button
               onClick={() => setFilter("paused")}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                filter === "paused" ? "bg-dark-800 text-amber-400" : "text-gray-400 hover:text-white"
+                filter === "paused" ? "bg-white dark:bg-dark-800 text-amber-600 dark:text-amber-400 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               Pausados ({rewards.filter((r) => !r.is_active).length})
@@ -180,21 +180,21 @@ export function RewardsManager() {
         <div
           className={`p-3.5 rounded-xl border text-xs flex items-center justify-between ${
             feedback.type === "success"
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-              : "bg-red-500/10 border-red-500/30 text-red-300"
+              ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+              : "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-800 dark:text-red-300"
           }`}
         >
           <div className="flex items-center space-x-2">
             {feedback.type === "success" ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-red-400" />
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
             )}
             <span>{feedback.text}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
-            className="text-gray-400 hover:text-white ml-2 text-sm"
+            className="text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white ml-2 text-sm"
           >
             ×
           </button>
@@ -204,11 +204,11 @@ export function RewardsManager() {
       {/* Rewards Grid */}
       {isLoading ? (
         <div className="py-12 flex flex-col items-center justify-center space-y-2">
-          <RefreshCw className="w-6 h-6 animate-spin text-bumeran-400" />
-          <p className="text-xs text-gray-400">Cargando catálogo de beneficios...</p>
+          <RefreshCw className="w-6 h-6 animate-spin text-bumeran-500 dark:text-bumeran-400" />
+          <p className="text-xs text-slate-500 dark:text-gray-400">Cargando catálogo de beneficios...</p>
         </div>
       ) : filteredRewards.length === 0 ? (
-        <div className="py-12 text-center text-xs text-gray-500">
+        <div className="py-12 text-center text-xs text-slate-400 dark:text-gray-500">
           No hay premios configurados en esta vista. Haz clic en &quot;Nuevo Premio&quot; para crear uno.
         </div>
       ) : (
@@ -218,8 +218,8 @@ export function RewardsManager() {
               key={reward.id}
               className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
                 reward.is_active
-                  ? "bg-dark-950/60 border-dark-800 hover:border-dark-700"
-                  : "bg-dark-950/30 border-dark-850 opacity-60 hover:opacity-100"
+                  ? "bg-slate-50/70 dark:bg-dark-950/60 border-slate-200 dark:border-dark-800 hover:border-slate-300 dark:hover:border-dark-700 shadow-sm"
+                  : "bg-slate-50/30 dark:bg-dark-950/30 border-slate-200/60 dark:border-dark-850 opacity-60 hover:opacity-100"
               }`}
             >
               <div className="space-y-2">
@@ -227,17 +227,17 @@ export function RewardsManager() {
                   {/* Type Badge */}
                   <div className="flex items-center space-x-1.5">
                     {reward.reward_type === "POINTS" ? (
-                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-bumeran-500/10 text-bumeran-400 border border-bumeran-500/20 text-[10px] font-bold">
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-bumeran-500/10 text-bumeran-600 dark:text-bumeran-400 border border-bumeran-500/20 text-[10px] font-bold">
                         <Coins className="w-3 h-3" />
                         <span>Puntos</span>
                       </span>
                     ) : reward.reward_type === "VISIT_MILESTONE" ? (
-                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-bold">
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-[10px] font-bold">
                         <Calendar className="w-3 h-3" />
                         <span>Hito Visita</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold">
                         <Sparkles className="w-3 h-3" />
                         <span>Cumpleaños</span>
                       </span>
@@ -247,8 +247,8 @@ export function RewardsManager() {
                     <span
                       className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                         reward.is_active
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-gray-500/10 text-gray-400 border border-gray-500/20"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          : "bg-slate-500/10 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-gray-500/20"
                       }`}
                     >
                       {reward.is_active ? "Activo" : "Pausado"}
@@ -256,35 +256,35 @@ export function RewardsManager() {
                   </div>
 
                   {/* Requirement Badge */}
-                  <div className="font-mono text-xs font-black text-white">
+                  <div className="font-mono text-xs font-black text-slate-900 dark:text-white">
                     {reward.reward_type === "POINTS" ? (
-                      <span className="text-amber-400">{reward.requirement_value} pts</span>
+                      <span className="text-amber-600 dark:text-amber-400">{reward.requirement_value} pts</span>
                     ) : reward.reward_type === "VISIT_MILESTONE" ? (
-                      <span className="text-purple-400">Visita #{reward.requirement_value}</span>
+                      <span className="text-purple-600 dark:text-purple-400">Visita #{reward.requirement_value}</span>
                     ) : (
-                      <span className="text-amber-400">Cortesía $0</span>
+                      <span className="text-amber-600 dark:text-amber-400">Cortesía $0</span>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-bold text-white">{reward.name}</h4>
-                  <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{reward.name}</h4>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 line-clamp-2 mt-0.5">
                     {reward.description || "Sin descripción adicional."}
                   </p>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-3 border-t border-dark-850 flex items-center justify-between text-xs">
+              <div className="pt-3 border-t border-slate-200 dark:border-dark-850 flex items-center justify-between text-xs">
                 {/* Toggle status switch */}
                 <button
                   type="button"
                   onClick={() => handleToggleStatus(reward)}
                   className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg font-semibold transition-colors ${
                     reward.is_active
-                      ? "bg-dark-850 hover:bg-dark-800 text-gray-300"
-                      : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30"
+                      ? "bg-slate-200 dark:bg-dark-850 hover:bg-slate-300 dark:hover:bg-dark-800 text-slate-700 dark:text-gray-300"
+                      : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
                   }`}
                   title={reward.is_active ? "Pausar beneficio" : "Activar beneficio"}
                 >
@@ -300,7 +300,7 @@ export function RewardsManager() {
                       setSelectedRewardToEdit(reward);
                       setIsModalOpen(true);
                     }}
-                    className="p-1.5 rounded-lg bg-dark-850 hover:bg-dark-800 text-gray-300 hover:text-white transition-colors"
+                    className="p-1.5 rounded-lg bg-slate-200 dark:bg-dark-850 hover:bg-slate-300 dark:hover:bg-dark-800 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors"
                     title="Editar premio"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -311,7 +311,7 @@ export function RewardsManager() {
                     <button
                       type="button"
                       onClick={() => handleDelete(reward)}
-                      className="p-1.5 rounded-lg bg-dark-850 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                      className="p-1.5 rounded-lg bg-slate-200 dark:bg-dark-850 hover:bg-red-50 dark:hover:bg-red-500/20 text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                       title="Eliminar premio"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

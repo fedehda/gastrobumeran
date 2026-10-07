@@ -11,6 +11,7 @@ import {
 } from "@/types/loyalty";
 import { getActiveRewards } from "./settings-repo";
 import { getActiveCampaigns } from "./campaign-repo";
+import { isLegalEntityCuit } from "@/lib/validation/cuit";
 import crypto from "crypto";
 
 export function findCustomerById(id: string): Customer | null {
@@ -116,6 +117,14 @@ export function createCustomer(data: {
 }): Customer {
   const db = getDatabase();
   const cleanDoc = data.document_number.trim();
+
+  // Regla de Negocio: Exclusión de Personas Jurídicas (Empresas)
+  if (isLegalEntityCuit(cleanDoc)) {
+    throw new Error(
+      `No se permite registrar personas jurídicas o empresas (CUIT: ${cleanDoc}). El programa de fidelización es exclusivo para personas humanas.`
+    );
+  }
+
   const cleanName = data.name.trim();
   const cleanPhone = data.phone ? data.phone.trim() : null;
   const cleanEmail = data.email ? data.email.trim() : null;

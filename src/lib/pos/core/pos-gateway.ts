@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/customer-repo";
 import { processSale, cancelSale } from "@/lib/loyalty/engine";
 import { Customer } from "@/types/loyalty";
+import { isLegalEntityCuit } from "@/lib/validation/cuit";
 import { IPosAdapter } from "./pos-adapter.interface";
 import { FudoAdapter } from "../adapters/fudo/fudo-adapter";
 import {
@@ -78,6 +79,11 @@ export class PosGateway {
     for (const pc of posCustomers) {
       try {
         const doc = pc.documentNumber ? pc.documentNumber.trim() : null;
+        if (doc && isLegalEntityCuit(doc)) {
+          console.log(`[PosGateway] Omitiendo cliente corporativo ${pc.name || pc.externalId} con CUIT ${doc} (Personas jurídicas excluidas)`);
+          continue;
+        }
+
         let existing: Customer | null = findCustomerByPosId(provider, pc.externalId);
 
         if (!existing && doc) {
@@ -89,6 +95,9 @@ export class PosGateway {
         }
 
         if (existing) {
+          if (isLegalEntityCuit(existing.document_number)) {
+            continue;
+          }
           linkCustomerPosId(existing.id, provider, pc.externalId);
           updatedCount++;
         } else {
@@ -265,6 +274,12 @@ export class PosGateway {
     }
 
     // 2. Resolución de comensal
+    // Si la venta tiene asociado un CUIT corporativo / Factura A a empresa, se excluye de fidelización
+    if (sale.customer?.documentNumber && isLegalEntityCuit(sale.customer.documentNumber)) {
+      console.log(`[PosGateway] Venta #${sale.externalSaleId} emitida a persona jurídica (CUIT ${sale.customer.documentNumber}). Excluida del programa de fidelización.`);
+      return { status: "UNASSIGNED" };
+    }
+
     let customer: Customer | null = null;
 
     if (sale.customer?.externalId) {
@@ -285,13 +300,27 @@ export class PosGateway {
       }
     }
 
+    // Si el cliente existente en DB corresponde a una empresa/persona jurídica, no sumar puntos
+    if (customer && isLegalEntityCuit(customer.document_number)) {
+      console.log(`[PosGateway] Cliente #${customer.id} (${customer.name}) es persona jurídica (CUIT ${customer.document_number}). Venta excluida de fidelización.`);
+      return { status: "UNASSIGNED" };
+    }
+
     if (!customer && sale.customer?.externalId && adapter.getCapabilities().supportsCustomerDirectory) {
       try {
         const fetched = await adapter.fetchCustomer(sale.customer.externalId);
         if (fetched) {
           const docNumber = (fetched.documentNumber || fetched.externalId).trim();
+          if (isLegalEntityCuit(docNumber)) {
+            console.log(`[PosGateway] Cliente POS #${sale.customer.externalId} es persona jurídica (CUIT ${docNumber}). Excluido de fidelización.`);
+            return { status: "UNASSIGNED" };
+          }
+
           const existingByDoc = findCustomerByDocument(docNumber);
           if (existingByDoc) {
+            if (isLegalEntityCuit(existingByDoc.document_number)) {
+              return { status: "UNASSIGNED" };
+            }
             linkCustomerPosId(existingByDoc.id, provider, fetched.externalId);
             customer = existingByDoc;
           } else {
@@ -313,8 +342,14 @@ export class PosGateway {
 
     if (!customer && (sale.customer?.documentNumber || (sale.customer?.phone && sale.customer?.name))) {
       const docNumber = sale.customer.documentNumber || sale.customer.phone!;
+      if (isLegalEntityCuit(docNumber)) {
+        return { status: "UNASSIGNED" };
+      }
       const existingByDoc = findCustomerByDocument(docNumber) || (sale.customer.phone ? findCustomerByPhone(sale.customer.phone) : null);
       if (existingByDoc) {
+        if (isLegalEntityCuit(existingByDoc.document_number)) {
+          return { status: "UNASSIGNED" };
+        }
         customer = existingByDoc;
       } else {
         customer = createCustomer({

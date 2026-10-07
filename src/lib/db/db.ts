@@ -239,6 +239,15 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "sales", "campaign_bonus_points INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "points_history", "campaign_id TEXT");
 
+  // Safe cleanup: Des-enrolar cualquier cliente cargado previamente con CUIT de persona jurídica (empresa)
+  db.prepare(`
+    UPDATE customers
+    SET loyalty_enrolled = 0
+    WHERE LENGTH(REPLACE(REPLACE(document_number, '-', ''), '.', '')) = 11
+      AND SUBSTR(REPLACE(REPLACE(document_number, '-', ''), '.', ''), 1, 2) IN ('30', '33', '34', '50', '51', '55')
+      AND loyalty_enrolled = 1
+  `).run();
+
   // Seed default settings if none exists
   const settingsCount = (db.prepare("SELECT COUNT(*) as count FROM loyalty_settings").get() as { count: number }).count;
   if (settingsCount === 0) {

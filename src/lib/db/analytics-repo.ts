@@ -318,32 +318,32 @@ export function getRfmSegmentationReport(cmvPercentage = 32): RfmSegmentationRep
 
     let quadrant: RfmQuadrant = "DORMANT";
     let quadrantLabel = "Dormidos";
-    let badgeColor = "bg-rose-500/20 text-rose-300 border-rose-500/40";
+    let badgeColor = "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40";
     let recommendation = "Inactivos (+90 días). Enviar promo de reactivación agresiva (2x1 o invitación especial).";
     let whatsappMessage = `¡Hola ${c.name}! 🔁 Hace tiempo no te vemos por GastroBumeran. Te extrañamos: presentá este mensaje esta semana y disfrutá de una consumición de cortesía.`;
 
     if (recencyDays <= 45 && frequency >= 4) {
       quadrant = "CHAMPIONS";
       quadrantLabel = "Champions (VIPs)";
-      badgeColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+      badgeColor = "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40";
       recommendation = "Clientes más leales y rentables. Fidelizar con atención preferencial y degustaciones sorpresa sin desgastar con promociones de descuento.";
       whatsappMessage = `¡Hola ${c.name}! 🌟 Como uno de nuestros comensales más destacados en GastroBumeran, tenés ${points} puntos acumulados para canjear cuando quieras. ¡Te esperamos pronto!`;
     } else if (recencyDays <= 45) {
       quadrant = "PROMISING";
       quadrantLabel = "Prometedores";
-      badgeColor = "bg-sky-500/20 text-sky-300 border-sky-500/40";
+      badgeColor = "bg-sky-500/10 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40";
       recommendation = "Visitaron recientemente con frecuencia en crecimiento. Incentivar una visita más para convertirlos en Champions.";
       whatsappMessage = `¡Hola ${c.name}! 🍔 Te esperamos nuevamente en GastroBumeran para seguir sumando sellos de visita y acumular puntos en tu tarjeta digital.`;
     } else if (recencyDays <= 90 && (frequency >= 2 || monetary >= 5000)) {
       quadrant = "AT_RISK";
       quadrantLabel = "En Riesgo (Rescate)";
-      badgeColor = "bg-amber-500/20 text-amber-300 border-amber-500/40";
+      badgeColor = "bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40";
       recommendation = "Eran comensales habituales pero no vienen hace 45-90 días. Sus puntos están cerca de la caducidad. Enviar rescate de WhatsApp.";
       whatsappMessage = `¡Hola ${c.name}! ⏰ Notamos que hace unos días no nos visitás. Te recordamos que tenés ${points} puntos activos en tu cuenta y nos encantaría recibirte antes de que caduquen.`;
     } else {
       quadrant = "DORMANT";
       quadrantLabel = "Dormidos";
-      badgeColor = "bg-rose-500/20 text-rose-300 border-rose-500/40";
+      badgeColor = "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40";
       recommendation = "Inactivos (+90 días o 1 sola visita lejana). Lanzar campaña de reactivación agresiva.";
       whatsappMessage = `¡Hola ${c.name}! 🔁 Hace tiempo no te vemos por GastroBumeran. Volvé esta semana y te agasajamos con un beneficio especial de bienvenida.`;
     }
@@ -378,7 +378,7 @@ export function getRfmSegmentationReport(cmvPercentage = 32): RfmSegmentationRep
       quadrant: "CHAMPIONS",
       label: "Champions (VIPs)",
       description: "Asistieron recientemente, visitan con alta frecuencia y generan el mayor ticket.",
-      badge_color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+      badge_color: "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40",
       gradient_class: "from-emerald-950/60 via-dark-900 to-dark-950 border-emerald-500/40",
       customer_count: quadrantCounts.CHAMPIONS.count,
       percentage_of_total: totalAnalyzed > 0 ? Math.round((quadrantCounts.CHAMPIONS.count / totalAnalyzed) * 1000) / 10 : 0,
@@ -390,7 +390,7 @@ export function getRfmSegmentationReport(cmvPercentage = 32): RfmSegmentationRep
       quadrant: "PROMISING",
       label: "Prometedores",
       description: "Comensales recientes con potencial de convertirse en embajadores habituales.",
-      badge_color: "bg-sky-500/20 text-sky-300 border-sky-500/40",
+      badge_color: "bg-sky-500/10 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40",
       gradient_class: "from-sky-950/60 via-dark-900 to-dark-950 border-sky-500/40",
       customer_count: quadrantCounts.PROMISING.count,
       percentage_of_total: totalAnalyzed > 0 ? Math.round((quadrantCounts.PROMISING.count / totalAnalyzed) * 1000) / 10 : 0,
@@ -402,7 +402,7 @@ export function getRfmSegmentationReport(cmvPercentage = 32): RfmSegmentationRep
       quadrant: "AT_RISK",
       label: "En Riesgo (Rescate)",
       description: "Eran clientes leales pero no asisten hace 45-90 días. En zona crítica de caducidad.",
-      badge_color: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+      badge_color: "bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40",
       gradient_class: "from-amber-950/60 via-dark-900 to-dark-950 border-amber-500/40",
       customer_count: quadrantCounts.AT_RISK.count,
       percentage_of_total: totalAnalyzed > 0 ? Math.round((quadrantCounts.AT_RISK.count / totalAnalyzed) * 1000) / 10 : 0,
@@ -414,7 +414,7 @@ export function getRfmSegmentationReport(cmvPercentage = 32): RfmSegmentationRep
       quadrant: "DORMANT",
       label: "Dormidos",
       description: "Superaron los 90 días de inactividad o asistieron una sola vez sin retorno.",
-      badge_color: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+      badge_color: "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40",
       gradient_class: "from-rose-950/60 via-dark-900 to-dark-950 border-rose-500/40",
       customer_count: quadrantCounts.DORMANT.count,
       percentage_of_total: totalAnalyzed > 0 ? Math.round((quadrantCounts.DORMANT.count / totalAnalyzed) * 1000) / 10 : 0,

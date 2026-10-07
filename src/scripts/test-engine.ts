@@ -34,7 +34,7 @@ async function main() {
     console.log("2. Cliente de prueba creado:", customer.name, "Cumpleaños:", customer.birth_date);
   } else {
     // Reset test state for repeatable runs
-    getDatabase().prepare("UPDATE customers SET last_birthday_reward_year = NULL WHERE id = ?").run(customer.id);
+    getDatabase().prepare("UPDATE customers SET last_birthday_reward_year = NULL, birth_date = ? WHERE id = ?").run(todayBirthday, customer.id);
     customer = findCustomerByDocument(testDoc)!;
   }
 

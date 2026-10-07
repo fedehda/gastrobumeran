@@ -35,6 +35,7 @@ export interface CsvBatchProcessSummary {
   errorCount: number;
   duplicatedCount: number;
   newCustomersCount: number;
+  skippedCompaniesCount: number;
   totalPointsEarned: number;
   totalAmountProcessed: number;
   results: CsvProcessRowResult[];

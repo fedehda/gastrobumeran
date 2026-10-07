@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Utensils, KeyRound, Mail, ShieldCheck, Eye, EyeOff, Sparkles, AlertCircle, ArrowRight, Keyboard, Lock } from "lucide-react";
 import { AdminUser } from "@/types/loyalty";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface LoginScreenProps {
   onLoginSuccess: (user: AdminUser) => void;
@@ -194,31 +195,36 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-dark-950 text-gray-100 relative overflow-hidden select-none">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-50 dark:bg-dark-950 text-slate-800 dark:text-gray-100 relative overflow-hidden select-none">
+      {/* Top right theme toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-bumeran-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-bumeran-600/5 dark:bg-bumeran-600/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative w-full max-w-md bg-dark-900/90 border border-dark-800 rounded-3xl shadow-2xl p-6 sm:p-8 backdrop-blur-xl space-y-6">
+      <div className="relative w-full max-w-md bg-white dark:bg-dark-900/90 border border-slate-200 dark:border-dark-800 rounded-3xl shadow-xl dark:shadow-2xl p-6 sm:p-8 backdrop-blur-xl space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-bumeran-600 to-amber-500 flex items-center justify-center shadow-glow">
             <Utensils className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-white">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               Gastro<span className="text-bumeran-500">Bumeran</span>
             </h1>
-            <p className="text-xs text-gray-400 font-medium">Plataforma de Fidelización Gastronómica</p>
+            <p className="text-xs text-slate-500 dark:text-gray-400 font-medium">Plataforma de Fidelización Gastronómica</p>
           </div>
-          <div className="inline-flex items-center space-x-1 px-3 py-1 rounded-full bg-dark-800 border border-dark-700 text-xs text-gray-300">
-            <ShieldCheck className="w-3.5 h-3.5 text-bumeran-400" />
+          <div className="inline-flex items-center space-x-1 px-3 py-1 rounded-full bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 text-xs text-slate-700 dark:text-gray-300">
+            <ShieldCheck className="w-3.5 h-3.5 text-bumeran-600 dark:text-bumeran-400" />
             <span>Acceso Seguro de Administrador</span>
           </div>
         </div>
 
         {/* Auth Mode Tabs */}
-        <div className="grid grid-cols-2 p-1 rounded-xl bg-dark-950 border border-dark-800">
+        <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-100 dark:bg-dark-950 border border-slate-200 dark:border-dark-800">
           <button
             type="button"
             onClick={() => {
@@ -228,7 +234,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             className={`flex items-center justify-center space-x-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
               authMode === "pin"
                 ? "bg-bumeran-600 text-white shadow-glow"
-                : "text-gray-400 hover:text-white"
+                : "text-slate-600 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
             }`}
           >
             <KeyRound className="w-3.5 h-3.5" />
@@ -244,7 +250,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             className={`flex items-center justify-center space-x-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
               authMode === "password"
                 ? "bg-bumeran-600 text-white shadow-glow"
-                : "text-gray-400 hover:text-white"
+                : "text-slate-600 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
             }`}
           >
             <Mail className="w-3.5 h-3.5" />
@@ -254,22 +260,22 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         {/* Lockout banner or error message */}
         {lockoutSeconds > 0 ? (
-          <div role="alert" className="p-4 rounded-2xl bg-red-500/10 border border-red-500/40 text-red-300 text-xs flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in duration-300">
-            <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shadow-inner">
+          <div role="alert" className="p-4 rounded-2xl bg-red-500/10 border border-red-500/40 text-red-700 dark:text-red-300 text-xs flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in duration-300">
+            <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center shadow-inner">
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-bold text-white text-sm">Acceso Bloqueado por Seguridad</div>
-              <p className="text-gray-300 text-xs mt-0.5">
+              <div className="font-bold text-slate-900 dark:text-white text-sm">Acceso Bloqueado por Seguridad</div>
+              <p className="text-slate-600 dark:text-gray-300 text-xs mt-0.5">
                 Demasiados intentos fallidos consecutivos. Podrás volver a intentar en:
               </p>
             </div>
-            <div className="px-3 py-1 rounded-lg bg-dark-950 font-mono text-base font-black text-red-400 border border-red-500/30">
+            <div className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-950 font-mono text-base font-black text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30">
               {formatLockoutTime(lockoutSeconds)}
             </div>
           </div>
         ) : errorMsg && (
-          <div role="status" aria-live="polite" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center space-x-2 animate-shake">
+          <div role="status" aria-live="polite" className="p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center space-x-2 animate-shake">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
@@ -279,7 +285,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         {authMode === "pin" && (
           <div className="space-y-5">
             <div className="text-center space-y-2">
-              <p className="text-xs text-gray-400">Ingresa tu PIN de seguridad (4 dígitos)</p>
+              <p className="text-xs text-slate-500 dark:text-gray-400">Ingresa tu PIN de seguridad (4 dígitos)</p>
               {/* Masked circles display with accessible status */}
               <div
                 role="status"
@@ -293,7 +299,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     className={`w-4 h-4 rounded-full transition-all duration-200 ${
                       pin.length > idx
                         ? "bg-bumeran-500 scale-125 shadow-glow"
-                        : "bg-dark-800 border border-dark-700"
+                        : "bg-slate-200 border border-slate-300 dark:bg-dark-800 dark:border-dark-700"
                     }`}
                   />
                 ))}
@@ -326,11 +332,11 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     className={`h-14 rounded-2xl text-lg font-bold transition-all duration-100 flex items-center justify-center active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                       isSpecial
                         ? isFeedbackActive
-                          ? "bg-dark-700 text-white border border-dark-600 scale-[0.98]"
-                          : "bg-dark-800/80 hover:bg-dark-750 text-gray-400 text-sm font-semibold"
+                          ? "bg-slate-200 dark:bg-dark-700 text-slate-900 dark:text-white border border-slate-300 dark:border-dark-600 scale-[0.98]"
+                          : "bg-slate-100/80 hover:bg-slate-200 dark:bg-dark-800/80 dark:hover:bg-dark-750 text-slate-600 dark:text-gray-400 text-sm font-semibold border border-slate-200 dark:border-transparent"
                         : isFeedbackActive
-                        ? "bg-dark-700 text-bumeran-400 border border-bumeran-500/40 scale-[0.98]"
-                        : "bg-dark-800 hover:bg-dark-750 text-white border border-dark-700/60 shadow-sm"
+                        ? "bg-slate-200 dark:bg-dark-700 text-bumeran-600 dark:text-bumeran-400 border border-bumeran-500/40 scale-[0.98]"
+                        : "bg-slate-50 hover:bg-slate-100 dark:bg-dark-800 dark:hover:bg-dark-750 text-slate-900 dark:text-white border border-slate-200 dark:border-dark-700/60 shadow-sm"
                     }`}
                   >
                     {btn}
@@ -340,8 +346,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Keyboard Hint */}
-            <div className="flex items-center justify-center space-x-1.5 text-[11px] text-gray-500 pt-1">
-              <Keyboard className="w-3.5 h-3.5 text-gray-400" />
+            <div className="flex items-center justify-center space-x-1.5 text-[11px] text-slate-400 dark:text-gray-500 pt-1">
+              <Keyboard className="w-3.5 h-3.5 text-slate-400 dark:text-gray-400" />
               <span>Puedes usar los números de tu teclado físico o numpad</span>
             </div>
           </div>
@@ -351,7 +357,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         {authMode === "password" && (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
-              <label htmlFor="admin-email" className="block text-xs font-medium text-gray-300 mb-1">
+              <label htmlFor="admin-email" className="block text-xs font-medium text-slate-700 dark:text-gray-300 mb-1">
                 Correo Electrónico
               </label>
               <div className="relative">
@@ -363,14 +369,14 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   disabled={lockoutSeconds > 0}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@gastrobumeran.com"
-                  className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500 disabled:opacity-50"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-bumeran-500 disabled:opacity-50"
                 />
-                <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-500" />
+                <Mail className="absolute right-3 top-3 w-4 h-4 text-slate-400 dark:text-gray-500" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="admin-password" className="block text-xs font-medium text-gray-300 mb-1">
+              <label htmlFor="admin-password" className="block text-xs font-medium text-slate-700 dark:text-gray-300 mb-1">
                 Contraseña de Administrador
               </label>
               <div className="relative">
@@ -382,13 +388,13 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   disabled={lockoutSeconds > 0}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Ingresa tu contraseña"
-                  className="w-full px-3.5 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bumeran-500 pr-10 disabled:opacity-50"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-dark-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-bumeran-500 pr-10 disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                  className="absolute right-3 top-3 text-gray-500 hover:text-white"
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-700 dark:text-gray-500 dark:hover:text-white"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -407,18 +413,18 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         )}
 
         {/* Demo Fast Access Button */}
-        <div className="pt-2 border-t border-dark-800 text-center">
+        <div className="pt-2 border-t border-slate-200 dark:border-dark-800 text-center">
           <button
             type="button"
             onClick={handleQuickDemoLogin}
             disabled={isLoading || lockoutSeconds > 0}
-            className="w-full inline-flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-dark-800 hover:bg-dark-750 text-xs font-bold text-amber-400 border border-amber-500/20 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-750 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Sparkles className="w-4 h-4" />
             <span>Ingreso Rápido Demo (PIN: 1234)</span>
           </button>
-          <p className="text-[11px] text-gray-500 mt-2">
-            Credenciales de prueba: <code className="text-gray-400">admin@gastrobumeran.com</code> / <code className="text-gray-400">admin123</code> (o PIN <code className="text-amber-400">1234</code>)
+          <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-2">
+            Credenciales de prueba: <code className="text-slate-700 dark:text-gray-400">admin@gastrobumeran.com</code> / <code className="text-slate-700 dark:text-gray-400">admin123</code> (o PIN <code className="text-amber-600 dark:text-amber-400">1234</code>)
           </p>
         </div>
       </div>

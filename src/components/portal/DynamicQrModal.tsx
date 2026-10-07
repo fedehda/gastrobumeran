@@ -86,12 +86,12 @@ export function DynamicQrModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm rounded-3xl bg-gradient-to-b from-dark-900 to-dark-950 border border-amber-500/40 p-6 shadow-2xl shadow-amber-500/10 text-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-gradient-to-b dark:from-dark-900 dark:to-dark-950 border border-slate-200 dark:border-amber-500/40 p-6 shadow-2xl shadow-slate-900/10 dark:shadow-amber-500/10 text-center">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-full bg-dark-800/80 hover:bg-dark-700 transition"
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-dark-800/80 dark:hover:bg-dark-700 transition"
           aria-label="Cerrar modal"
         >
           <X className="w-5 h-5" />
@@ -99,18 +99,18 @@ export function DynamicQrModal({
 
         {/* Header */}
         <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+          <div className="w-8 h-8 rounded-full bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
             <QrCode className="w-4 h-4" />
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+          <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
             Código QR Personal
           </span>
         </div>
 
-        <h3 className="text-xl font-bold text-white mb-1 truncate px-4">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 truncate px-4">
           {customerName}
         </h3>
-        <p className="text-xs text-gray-400 mb-5">
+        <p className="text-xs text-slate-500 dark:text-gray-400 mb-5">
           Presentá este código en el mostrador o mostráselo al mozo al momento de pagar.
         </p>
 
@@ -132,18 +132,18 @@ export function DynamicQrModal({
         </div>
 
         {/* DNI Number Badge */}
-        <div className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-dark-800/80 border border-gray-700/60">
-          <span className="text-xs text-gray-400">DNI / Nro. Fiscal:</span>
-          <span className="text-sm font-mono font-bold text-amber-300">
+        <div className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-dark-800/80 border border-slate-200 dark:border-gray-700/60">
+          <span className="text-xs text-slate-500 dark:text-gray-400">DNI / Nro. Fiscal:</span>
+          <span className="text-sm font-mono font-bold text-amber-600 dark:text-amber-300">
             {documentNumber}
           </span>
           <button
             onClick={handleCopyCode}
-            className="p-1 text-gray-400 hover:text-amber-300 transition"
+            className="p-1 text-slate-400 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-300 transition"
             title="Copiar DNI"
           >
             {isCopied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             ) : (
               <Copy className="w-3.5 h-3.5" />
             )}
@@ -151,8 +151,8 @@ export function DynamicQrModal({
         </div>
 
         {/* Brightness Tip */}
-        <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-amber-300/80 bg-amber-500/10 rounded-lg py-1.5 px-3">
-          <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+        <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-amber-800 dark:text-amber-300/80 bg-amber-500/10 rounded-lg py-1.5 px-3">
+          <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
           <span>Sube el brillo de tu pantalla para facilitar el escaneo en caja</span>
         </div>
 
@@ -160,12 +160,12 @@ export function DynamicQrModal({
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button
             onClick={handleShare}
-            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-dark-800 hover:bg-dark-700 text-gray-200 text-xs font-medium border border-gray-700 transition"
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-700 dark:text-gray-200 text-xs font-medium border border-slate-200 dark:border-gray-700 transition"
           >
             {isShared ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <Share2 className="w-3.5 h-3.5 text-amber-400" />
+              <Share2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             )}
             <span>Compartir</span>
           </button>

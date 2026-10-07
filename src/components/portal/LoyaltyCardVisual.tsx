@@ -43,16 +43,16 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
     <div className="w-full space-y-4">
       {/* Birthday Banner if in window */}
       {birthday_status.isEligible && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-pink-900/40 via-purple-900/30 to-amber-900/40 border border-pink-500/40 p-4 shadow-lg shadow-pink-500/10 animate-pulse">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-pink-50 via-purple-50 to-amber-50 dark:from-pink-900/40 dark:via-purple-900/30 dark:to-amber-900/40 border border-pink-300 dark:border-pink-500/40 p-4 shadow-sm dark:shadow-lg dark:shadow-pink-500/10 animate-pulse">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0 text-xl">
+            <div className="w-10 h-10 rounded-xl bg-pink-500/10 dark:bg-pink-500/20 text-pink-500 dark:text-pink-400 flex items-center justify-center shrink-0 text-xl">
               🎂
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-bold text-pink-200">
+              <h4 className="text-sm font-bold text-pink-700 dark:text-pink-200">
                 ¡Semana de tu Cumpleaños!
               </h4>
-              <p className="text-xs text-pink-300/80">
+              <p className="text-xs text-pink-900/80 dark:text-pink-300/80">
                 Tenés habilitado un <strong>Postre de la Casa de cortesía</strong>. Mostrá tu tarjeta al mozo o en caja para disfrutarlo.
               </p>
             </div>
@@ -62,10 +62,10 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
 
       {/* Expiration Warning Banner if <= 15 days */}
       {is_expiring_soon && (
-        <div className="rounded-2xl bg-amber-950/40 border border-amber-500/40 p-3.5 flex items-center gap-3 text-amber-200 text-xs">
-          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+        <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-500/40 p-3.5 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-xs shadow-sm dark:shadow-none">
+          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
           <div className="flex-1">
-            <span className="font-semibold text-amber-300">¡Alerta Anti-Inflación!</span>{" "}
+            <span className="font-semibold text-amber-800 dark:text-amber-300">¡Alerta Anti-Inflación!</span>{" "}
             Tus {customer.points_balance} puntos vencerán en <strong>{days_until_inactivity_expiry} día(s)</strong> por inactividad. Cualquier consumo nuevo resetea el reloj a 90 días.
           </div>
         </div>

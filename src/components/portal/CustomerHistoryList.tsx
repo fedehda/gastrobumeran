@@ -13,9 +13,9 @@ export function CustomerHistoryList({ history }: CustomerHistoryListProps) {
 
   if (!history || history.length === 0) {
     return (
-      <div className="rounded-2xl bg-dark-900/60 border border-gray-800 p-6 text-center">
-        <Clock className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-        <p className="text-xs text-gray-400">
+      <div className="rounded-2xl bg-white dark:bg-dark-900/60 border border-slate-200 dark:border-gray-800 p-6 text-center shadow-sm">
+        <Clock className="w-8 h-8 text-slate-400 dark:text-gray-600 mx-auto mb-2" />
+        <p className="text-xs text-slate-500 dark:text-gray-400">
           Aún no registras movimientos de puntos. ¡Tus próximas visitas aparecerán aquí!
         </p>
       </div>
@@ -42,16 +42,16 @@ export function CustomerHistoryList({ history }: CustomerHistoryListProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <History className="w-4 h-4 text-amber-400" />
+        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <History className="w-4 h-4 text-amber-500 dark:text-amber-400" />
           <span>Actividad Reciente</span>
         </h3>
-        <span className="text-[11px] text-gray-400">
+        <span className="text-[11px] text-slate-500 dark:text-gray-400">
           Últimos movimientos registrados
         </span>
       </div>
 
-      <div className="rounded-2xl bg-dark-900/80 border border-gray-800 divide-y divide-gray-800/80 overflow-hidden">
+      <div className="rounded-2xl bg-white dark:bg-dark-900/80 border border-slate-200 dark:border-gray-800 divide-y divide-slate-100 dark:divide-gray-800/80 overflow-hidden shadow-sm">
         {displayedHistory.map((item) => {
           const isPositive = item.points > 0;
           const isZero = item.points === 0;
@@ -60,16 +60,16 @@ export function CustomerHistoryList({ history }: CustomerHistoryListProps) {
           return (
             <div
               key={item.id}
-              className="p-3.5 flex items-center justify-between gap-3 hover:bg-dark-800/40 transition"
+              className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-dark-800/40 transition"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                     isBirthday
-                      ? "bg-pink-500/20 text-pink-400"
+                      ? "bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400"
                       : isPositive
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-purple-500/20 text-purple-400"
+                      ? "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      : "bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400"
                   }`}
                 >
                   {isBirthday ? (
@@ -82,10 +82,10 @@ export function CustomerHistoryList({ history }: CustomerHistoryListProps) {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-200 truncate">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-gray-200 truncate">
                     {item.concept}
                   </p>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-slate-400 dark:text-gray-500">
                     {formatDate(item.created_at)}
                   </p>
                 </div>
@@ -93,13 +93,15 @@ export function CustomerHistoryList({ history }: CustomerHistoryListProps) {
 
               <div className="text-right shrink-0">
                 {isZero ? (
-                  <span className="text-xs font-bold text-pink-400">
+                  <span className="text-xs font-bold text-pink-600 dark:text-pink-400">
                     Invitación
                   </span>
                 ) : (
                   <span
                     className={`text-xs font-bold font-mono ${
-                      isPositive ? "text-emerald-400" : "text-purple-400"
+                      isPositive
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-purple-600 dark:text-purple-400"
                     }`}
                   >
                     {isPositive ? `+${item.points}` : item.points} pts
@@ -114,7 +116,7 @@ export function CustomerHistoryList({ history }: CustomerHistoryListProps) {
       {history.length > 5 && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full py-2 text-center text-xs font-medium text-amber-400/90 hover:text-amber-300 transition"
+          className="w-full py-2 text-center text-xs font-medium text-amber-600 dark:text-amber-400/90 hover:text-amber-700 dark:hover:text-amber-300 transition"
         >
           {isExpanded ? "Mostrar menos movimientos" : `Ver todos los movimientos (${history.length})`}
         </button>

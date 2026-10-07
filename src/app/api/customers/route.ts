@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchCustomers, createCustomer, findCustomerByDocument } from "@/lib/db/customer-repo";
+import { validateHumanDocument } from "@/lib/validation/cuit";
 import { posGateway } from "@/lib/pos";
 
 export async function GET(req: NextRequest) {
@@ -33,6 +34,15 @@ export async function POST(req: NextRequest) {
     if (!document_number || !name) {
       return NextResponse.json(
         { success: false, error: "El DNI/Número Fiscal y el Nombre son obligatorios." },
+        { status: 400 }
+      );
+    }
+
+    // Regla de Negocio: Exclusión estricta de CUITs de empresas (personas jurídicas)
+    const docValidation = validateHumanDocument(document_number);
+    if (!docValidation.valid) {
+      return NextResponse.json(
+        { success: false, error: docValidation.errorMessage },
         { status: 400 }
       );
     }
