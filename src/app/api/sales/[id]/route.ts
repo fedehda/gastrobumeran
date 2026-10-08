@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cancelSale } from "@/lib/loyalty/engine";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const { id } = await params;
     if (!id) {
       return NextResponse.json({ success: false, error: "ID de venta requerido." }, { status: 400 });
@@ -25,7 +30,7 @@ export async function DELETE(
       // Ignore body parse errors
     }
 
-    const result = cancelSale(id, reason);
+    const result = cancelSale(id, reason, restaurantId);
     return NextResponse.json({
       success: true,
       data: result,

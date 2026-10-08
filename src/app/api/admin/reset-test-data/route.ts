@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTestDataCounts, resetTestData } from "@/lib/db/maintenance-repo";
 import { logCronExecution } from "@/lib/db/cron-repo";
+import { requireSession } from "@/lib/auth/require-session";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["PLATFORM_ADMIN", "ADMIN"] });
+    if (!session.success) return session.response;
+
     const counts = getTestDataCounts();
     return NextResponse.json({
       success: true,
@@ -24,6 +28,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
+    const session = await requireSession(req, { allowedRoles: ["PLATFORM_ADMIN", "ADMIN"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
     const body = await req.json().catch(() => ({}));
     const { confirmation, resetFudoSync = true, resetCronLogs = true } = body;
 

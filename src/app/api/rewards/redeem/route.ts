@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { redeemReward } from "@/lib/loyalty/engine";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const body = await req.json();
     const { customerId, rewardId } = body;
 
@@ -13,7 +18,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = redeemReward(customerId, Number(rewardId));
+    const result = redeemReward(customerId, Number(rewardId), restaurantId);
 
     return NextResponse.json({
       success: true,

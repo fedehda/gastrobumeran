@@ -8,11 +8,16 @@ import {
   updateCustomerLoyaltyEnrollment,
 } from "@/lib/db/customer-repo";
 import { getActiveRewards } from "@/lib/db/settings-repo";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const { id } = await params;
-    const customer = findCustomerById(id);
+    const customer = findCustomerById(id, restaurantId);
 
     if (!customer) {
       return NextResponse.json({ success: false, error: "Cliente no encontrado" }, { status: 404 });
@@ -21,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const pointsHistory = getCustomerPointsHistory(id, 20);
     const sales = getCustomerSales(id, 20);
     const activeBatches = getCustomerActiveBatches(id);
-    const allRewards = getActiveRewards();
+    const allRewards = getActiveRewards(restaurantId);
     const birthdayStatus = checkBirthdayStatus(customer);
 
     // Calculate days until inactivity expiration (Timer 1)
@@ -85,6 +90,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const { id } = await params;
     const body = await req.json();
     const { loyalty_enrolled } = body;
@@ -96,7 +105,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
-    const result = updateCustomerLoyaltyEnrollment(id, Boolean(loyalty_enrolled));
+    const result = updateCustomerLoyaltyEnrollment(id, Boolean(loyalty_enrolled), restaurantId);
 
     return NextResponse.json({
       success: true,

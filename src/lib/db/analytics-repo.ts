@@ -488,3 +488,10 @@ export function generateRfmCsv(customers: RfmCustomer[]): string {
 
   return bom + [headers.join(";"), ...rows].join("\r\n");
 }
+
+export function getRfmSegmentationReport(
+  cmvPercentage: number = 32,
+  restaurantId: string = DEFAULT_RESTAURANT_ID
+): RfmSegmentationReport {
+  return getRfmSegmentation(restaurantId, cmvPercentage);
+}

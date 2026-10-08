@@ -1,4 +1,4 @@
-import { db } from "../lib/db/db";
+import { getDatabase } from "../lib/db/db";
 import {
   createRestaurant,
   getRestaurantBySlug,

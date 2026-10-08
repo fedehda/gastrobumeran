@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchCustomers, createCustomer, findCustomerByDocument } from "@/lib/db/customer-repo";
 import { validateHumanDocument } from "@/lib/validation/cuit";
 import { posGateway } from "@/lib/pos";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const { searchParams } = new URL(req.url);
     const rawQuery = searchParams.get("query") || "";
     let cleanQuery = rawQuery.trim();
@@ -18,7 +23,7 @@ export async function GET(req: NextRequest) {
     else if (rawFilter === "unenrolled") filter = "unenrolled";
     else if (!cleanQuery && !rawFilter) filter = "active";
 
-    const customers = searchCustomers(cleanQuery, limit, filter);
+    const customers = searchCustomers(cleanQuery, limit, filter, restaurantId);
     return NextResponse.json({ success: true, customers });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al buscar clientes";
@@ -28,6 +33,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const body = await req.json();
     const { document_number, name, phone, email, birth_date, loyalty_enrolled } = body;
 
@@ -47,7 +56,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existing = findCustomerByDocument(document_number);
+    const existing = findCustomerByDocument(document_number, restaurantId);
     if (existing) {
       return NextResponse.json(
         { success: true, customer: existing, message: "El cliente ya se encontraba registrado." },
@@ -62,7 +71,7 @@ export async function POST(req: NextRequest) {
       email,
       birth_date,
       loyalty_enrolled: loyalty_enrolled !== undefined ? (loyalty_enrolled ? 1 : 0) : 1,
-    });
+    }, restaurantId);
 
     // Sincronización proactiva bidireccional con el sistema POS activo (vía POS Gateway)
     let fudoSynced = false;

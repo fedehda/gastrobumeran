@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllPresets, savePreset } from "@/lib/db/presets-repo";
+import { requireSession } from "@/lib/auth/require-session";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const presets = getAllPresets();
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
+    const presets = getAllPresets(restaurantId);
     return NextResponse.json({ success: true, presets });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al obtener presets";
@@ -13,6 +18,10 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const body = await req.json();
     const { system_name, mapping_config, delimiter } = body;
 
@@ -23,7 +32,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const saved = savePreset(system_name, mapping_config, delimiter || ";");
+    const saved = savePreset(system_name, mapping_config, delimiter || ";", restaurantId);
 
     return NextResponse.json({
       success: true,

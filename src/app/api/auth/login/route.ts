@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticateWithPassword, authenticateWithPin, createSessionToken } from "@/lib/db/auth-repo";
+import { getRestaurantBySlug } from "@/lib/db/restaurant-repo";
 import {
   buildRateLimitKey,
   checkRateLimit,
@@ -22,11 +23,19 @@ function getClientIp(req: Request): string {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, password, pin } = body;
+    const { email, password, pin, restaurantId, restaurantSlug } = body;
+
+    let targetRestoId = restaurantId ? String(restaurantId).trim() : undefined;
+    if (!targetRestoId && restaurantSlug) {
+      const resto = getRestaurantBySlug(String(restaurantSlug));
+      if (resto) {
+        targetRestoId = resto.id;
+      }
+    }
 
     const clientIp = getClientIp(req);
     const authType = pin ? "pin" : "password";
-    const key = buildRateLimitKey(clientIp, authType, email);
+    const key = buildRateLimitKey(clientIp, authType, email || targetRestoId);
 
     // 1. Verificar si la IP / cuenta se encuentra bloqueada por rate limit
     const rateCheck = checkRateLimit(key);
@@ -48,7 +57,7 @@ export async function POST(req: Request) {
     let user = null;
 
     if (pin) {
-      user = authenticateWithPin(String(pin));
+      user = authenticateWithPin(String(pin), targetRestoId);
       if (!user) {
         const failResult = recordFailedAttempt(key);
         if (failResult.delayMs > 0) {
@@ -83,7 +92,7 @@ export async function POST(req: Request) {
         );
       }
     } else if (email && password) {
-      user = authenticateWithPassword(String(email), String(password));
+      user = authenticateWithPassword(String(email), String(password), targetRestoId);
       if (!user) {
         const failResult = recordFailedAttempt(key);
         if (failResult.delayMs > 0) {

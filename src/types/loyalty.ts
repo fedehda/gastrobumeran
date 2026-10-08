@@ -380,7 +380,7 @@ export interface BackofficeAnalytics {
   recentCrons: CronLog[];
 }
 
-export type AdminRole = "OWNER" | "ADMIN" | "CASHIER" | "SUPERVISOR" | "PLATFORM_ADMIN";
+export type AdminRole = "OWNER" | "ADMIN" | "CASHIER" | "SUPERVISOR" | "OPERATOR" | "PLATFORM_ADMIN";
 
 export interface AdminUser {
   id: string;

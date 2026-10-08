@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processCsvBatch } from "@/lib/csv/batch-processor";
 import { CsvFieldMapping } from "@/lib/csv/parser";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const body = await req.json();
     const { csvContent, mapping, delimiter, presetName } = body;
 
@@ -30,6 +35,7 @@ export async function POST(req: NextRequest) {
       mapping: fieldMapping,
       delimiter,
       presetName,
+      restaurantId,
     });
 
     return NextResponse.json({

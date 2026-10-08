@@ -89,7 +89,7 @@ async function runRfmTests() {
 
   // 6. Test CSV Export Generation
   console.log("\n6. 📄 Probando Generación de Archivo CSV (Compatible con Excel / Meta Ads):");
-  const championsOnly = report.customers.filter((c) => c.quadrant === "CHAMPIONS");
+  const championsOnly = report.customers.filter((c: any) => c.quadrant === "CHAMPIONS");
   const csvData = generateRfmCsv(championsOnly);
 
   // Check UTF-8 BOM

@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRfmSegmentationReport, generateRfmCsv } from "@/lib/db/analytics-repo";
-import { RfmQuadrant } from "@/types/loyalty";
+import { RfmQuadrant, RfmCustomer } from "@/types/loyalty";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const { searchParams } = new URL(request.url);
     const quadrant = (searchParams.get("quadrant") || "ALL").toUpperCase();
 
-    const report = getRfmSegmentationReport();
+    const report = getRfmSegmentationReport(32, restaurantId);
 
     let filtered = report.customers;
     if (quadrant !== "ALL") {
-      filtered = report.customers.filter((c) => c.quadrant === (quadrant as RfmQuadrant));
+      filtered = report.customers.filter((c: RfmCustomer) => c.quadrant === (quadrant as RfmQuadrant));
     }
 
     const csvContent = generateRfmCsv(filtered);

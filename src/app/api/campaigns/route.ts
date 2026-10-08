@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { getAllCampaigns, getActiveCampaigns, createCampaign } from "@/lib/db/campaign-repo";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function GET(req: Request) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const url = new URL(req.url);
     const includeAll = url.searchParams.get("all") === "true";
-    const campaigns = includeAll ? getAllCampaigns() : getActiveCampaigns();
+    const campaigns = includeAll ? getAllCampaigns(restaurantId) : getActiveCampaigns(restaurantId);
     return NextResponse.json({ success: true, campaigns });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al obtener campañas";
@@ -15,6 +20,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN"] });
+    if (!session.success) return session.response;
+    const { restaurantId } = session;
+
     const body = await req.json();
     const {
       name,
@@ -53,7 +62,7 @@ export async function POST(req: Request) {
       applicable_sectors: applicable_sectors || "ALL",
       is_active: is_active !== undefined ? Boolean(is_active) : true,
       priority: priority !== undefined ? Number(priority) : 1,
-    });
+    }, restaurantId);
 
     return NextResponse.json({ success: true, campaign: created }, { status: 201 });
   } catch (error: unknown) {

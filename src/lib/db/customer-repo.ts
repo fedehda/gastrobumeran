@@ -368,6 +368,48 @@ export function checkBirthdayStatus(customer: Customer): BirthdayStatus {
   };
 }
 
+export function getCustomerMetrics(restaurantId: string = DEFAULT_RESTAURANT_ID) {
+  const db = getDatabase();
+  const countRow = db.prepare("SELECT COUNT(*) as total_customers, SUM(points_balance) as total_points, SUM(total_spent) as total_revenue FROM customers WHERE restaurant_id = ?").get(restaurantId) as {
+    total_customers: number;
+    total_points: number;
+    total_revenue: number;
+  };
+  const todaySales = db.prepare(`
+    SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as amount
+    FROM sales
+    WHERE restaurant_id = ? AND date(sale_date) = date('now')
+  `).get(restaurantId) as { count: number; amount: number };
+
+  const todayPoints = db.prepare(`
+    SELECT COALESCE(SUM(points), 0) as points
+    FROM points_history
+    WHERE restaurant_id = ? AND points > 0 AND date(created_at) = date('now')
+  `).get(restaurantId) as { points: number };
+
+  const todayRedemptions = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM points_history
+    WHERE restaurant_id = ? AND points < 0 AND concept LIKE 'Canje%' AND date(created_at) = date('now')
+  `).get(restaurantId) as { count: number };
+
+  const todayBirthdays = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM points_history
+    WHERE restaurant_id = ? AND concept LIKE 'Cortesía de cumpleaños%' AND date(created_at) = date('now')
+  `).get(restaurantId) as { count: number };
+
+  return {
+    total_customers: countRow.total_customers || 0,
+    total_points: countRow.total_points || 0,
+    total_revenue: countRow.total_revenue || 0,
+    today_sales_count: todaySales.count || 0,
+    today_sales_amount: todaySales.amount || 0,
+    today_points_issued: todayPoints.points || 0,
+    today_redemptions_count: (todayRedemptions.count || 0) + (todayBirthdays.count || 0),
+  };
+}
+
 export function calculateCustomerTier(visitsCount: number): CustomerTier {
   if (visitsCount >= 10) {
     return {
