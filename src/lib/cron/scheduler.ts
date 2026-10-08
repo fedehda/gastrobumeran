@@ -2,6 +2,7 @@ import { getFudoConfig } from "@/lib/db/fudo-repo";
 import { posGateway } from "@/lib/pos";
 import { logCronExecution } from "@/lib/db/cron-repo";
 import { runExpirationAudit } from "@/lib/loyalty/engine";
+import { getAllRestaurants } from "@/lib/db/restaurant-repo";
 
 declare global {
   var __gb_cron_interval__: NodeJS.Timeout | undefined;
@@ -19,49 +20,66 @@ export async function executeFudoAutoSyncTick(): Promise<void> {
   globalThis.__gb_cron_running__ = true;
 
   try {
-    const config = getFudoConfig();
+    const activeRestos = getAllRestaurants().filter(
+      (r) => r.status === "ACTIVE" || r.status === "TRIAL_DEMO"
+    );
 
-    // 1. Check Fudo Auto Sync
-    if (config.auto_sync_enabled) {
-      const now = Date.now();
-      const lastSyncTime = config.last_sync_at ? new Date(config.last_sync_at).getTime() : 0;
-      const intervalMs = Math.max(1, config.sync_interval_minutes) * 60 * 1000;
+    // 1. Check Fudo Auto Sync for each active restaurant
+    for (const resto of activeRestos) {
+      const config = getFudoConfig(resto.id);
+      if (config.auto_sync_enabled) {
+        const now = Date.now();
+        const lastSyncTime = config.last_sync_at ? new Date(config.last_sync_at).getTime() : 0;
+        const intervalMs = Math.max(1, config.sync_interval_minutes) * 60 * 1000;
 
-      if (!config.last_sync_at || now - lastSyncTime >= intervalMs) {
-        const startTime = Date.now();
-        try {
-          const result = await posGateway.syncSales({ provider: "FUDO", fullSync: false, syncCustomers: true });
-          const durationMs = Date.now() - startTime;
-          const summary = `Auto-Sync Fudo completado en ${durationMs}ms: ${result.syncedCount} ventas ingeridas (${result.totalPointsEarned} pts), ${result.newCustomersCount} comensales vinculados.`;
+        if (!config.last_sync_at || now - lastSyncTime >= intervalMs) {
+          const startTime = Date.now();
+          try {
+            const result = await posGateway.syncSales({
+              provider: "FUDO",
+              fullSync: false,
+              syncCustomers: true,
+              restaurantId: resto.id,
+            });
+            const durationMs = Date.now() - startTime;
+            const summary = `[${resto.name}] Auto-Sync Fudo completado en ${durationMs}ms: ${result.syncedCount} ventas ingeridas (${result.totalPointsEarned} pts), ${result.newCustomersCount} comensales vinculados.`;
 
-          logCronExecution({
-            job_name: "FUDO_AUTO_SYNC",
-            status: result.errors.length > 0 ? "WARNING" : "SUCCESS",
-            summary,
-            details: {
-              totalRetrieved: result.totalRetrieved,
-              syncedCount: result.syncedCount,
-              duplicatedCount: result.duplicatedCount,
-              unassignedCount: result.unassignedCount,
-              newCustomersCount: result.newCustomersCount,
-              totalPointsEarned: result.totalPointsEarned,
-              totalAmountProcessed: result.totalAmountProcessed,
-              errors: result.errors,
-            },
-            duration_ms: durationMs,
-          });
+            logCronExecution(
+              {
+                job_name: "FUDO_AUTO_SYNC",
+                status: result.errors.length > 0 ? "WARNING" : "SUCCESS",
+                summary,
+                details: {
+                  restaurantId: resto.id,
+                  totalRetrieved: result.totalRetrieved,
+                  syncedCount: result.syncedCount,
+                  duplicatedCount: result.duplicatedCount,
+                  unassignedCount: result.unassignedCount,
+                  newCustomersCount: result.newCustomersCount,
+                  totalPointsEarned: result.totalPointsEarned,
+                  totalAmountProcessed: result.totalAmountProcessed,
+                  errors: result.errors,
+                },
+                duration_ms: durationMs,
+              },
+              resto.id
+            );
 
-          console.log(`[GastroBumeran AutoSync] ${summary}`);
-        } catch (syncErr) {
-          const durationMs = Date.now() - startTime;
-          const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
-          logCronExecution({
-            job_name: "FUDO_AUTO_SYNC",
-            status: "ERROR",
-            summary: `Error en auto-sync Fudo: ${msg}`,
-            duration_ms: durationMs,
-          });
-          console.error(`[GastroBumeran AutoSync] Error:`, msg);
+            console.log(`[GastroBumeran AutoSync] ${summary}`);
+          } catch (syncErr) {
+            const durationMs = Date.now() - startTime;
+            const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
+            logCronExecution(
+              {
+                job_name: "FUDO_AUTO_SYNC",
+                status: "ERROR",
+                summary: `[${resto.name}] Error en auto-sync Fudo: ${msg}`,
+                duration_ms: durationMs,
+              },
+              resto.id
+            );
+            console.error(`[GastroBumeran AutoSync] [${resto.name}] Error:`, msg);
+          }
         }
       }
     }

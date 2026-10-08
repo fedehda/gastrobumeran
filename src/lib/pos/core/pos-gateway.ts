@@ -1,4 +1,4 @@
-import { getDatabase } from "@/lib/db/db";
+import { getDatabase, DEFAULT_RESTAURANT_ID } from "@/lib/db/db";
 import { getFudoConfig, updateFudoLastSync } from "@/lib/db/fudo-repo";
 import {
   findCustomerByDocument,
@@ -42,7 +42,11 @@ export class PosGateway {
     this.adapters.set(adapter.providerId, adapter);
   }
 
-  public getAdapter(provider: PosProviderType = "FUDO"): IPosAdapter {
+  public getAdapter(provider: PosProviderType = "FUDO", restaurantId?: string): IPosAdapter {
+    if (provider === "FUDO" && restaurantId) {
+      const config = getFudoConfig(restaurantId);
+      return new FudoAdapter(config);
+    }
     const adapter = this.adapters.get(provider);
     if (!adapter) {
       throw new Error(`Proveedor POS '${provider}' no soportado o no registrado.`);
@@ -61,9 +65,10 @@ export class PosGateway {
    * Sincroniza el directorio de comensales desde el POS hacia GastroBumeran
    */
   public async syncCustomers(
-    provider: PosProviderType = "FUDO"
+    provider: PosProviderType = "FUDO",
+    restaurantId: string = DEFAULT_RESTAURANT_ID
   ): Promise<{ total: number; importedCount: number; updatedCount: number }> {
-    const adapter = this.getAdapter(provider);
+    const adapter = this.getAdapter(provider, restaurantId);
     let posCustomers: CanonicalCustomer[] = [];
 
     try {
@@ -84,14 +89,14 @@ export class PosGateway {
           continue;
         }
 
-        let existing: Customer | null = findCustomerByPosId(provider, pc.externalId);
+        let existing: Customer | null = findCustomerByPosId(provider, pc.externalId, restaurantId);
 
         if (!existing && doc) {
-          existing = findCustomerByDocument(doc);
+          existing = findCustomerByDocument(doc, restaurantId);
         }
 
         if (!existing && pc.phone) {
-          existing = findCustomerByPhone(pc.phone);
+          existing = findCustomerByPhone(pc.phone, restaurantId);
         }
 
         if (existing) {
@@ -109,7 +114,7 @@ export class PosGateway {
             email: pc.email,
             birth_date: pc.birthDate,
             loyalty_enrolled: 0,
-          });
+          }, restaurantId);
           importedCount++;
         }
       } catch (err) {
@@ -129,9 +134,10 @@ export class PosGateway {
    */
   public async syncSales(options?: PosSyncOptions): Promise<PosSyncResult> {
     const provider = options?.provider || "FUDO";
-    const adapter = this.getAdapter(provider);
+    const restaurantId = options?.restaurantId || DEFAULT_RESTAURANT_ID;
+    const adapter = this.getAdapter(provider, restaurantId);
 
-    const config = getFudoConfig();
+    const config = getFudoConfig(restaurantId);
     const fromIso = options?.fullSync ? undefined : options?.fromIso || config.last_sync_at || undefined;
     const syncStartTime = new Date().toISOString();
 
@@ -149,7 +155,7 @@ export class PosGateway {
     // 1. Sincronización de comensales opcional
     if (options?.syncCustomers !== false && adapter.getCapabilities().supportsCustomerDirectory) {
       try {
-        const custSync = await this.syncCustomers(provider);
+        const custSync = await this.syncCustomers(provider, restaurantId);
         importedCustomersCount = custSync.importedCount;
         updatedCustomersCount = custSync.updatedCount;
       } catch (custErr) {
@@ -189,7 +195,8 @@ export class PosGateway {
     // 3. Procesar cada venta canónica mediante el motor unificado de ingesta
     for (const sale of sales) {
       try {
-        const ingestRes = await this.ingestCanonicalSale(sale, provider);
+        sale.restaurantId = restaurantId;
+        const ingestRes = await this.ingestCanonicalSale(sale, provider, restaurantId);
         if (ingestRes.status === "INGESTED") {
           syncedCount++;
           totalPointsEarned += ingestRes.pointsEarned || 0;
@@ -214,7 +221,7 @@ export class PosGateway {
     }
 
     if (provider === "FUDO") {
-      updateFudoLastSync(syncStartTime);
+      updateFudoLastSync(syncStartTime, restaurantId);
     }
 
     return {
@@ -239,19 +246,21 @@ export class PosGateway {
    */
   public async ingestCanonicalSale(
     sale: CanonicalSale,
-    provider: PosProviderType = "FUDO"
+    provider: PosProviderType = "FUDO",
+    restaurantId?: string
   ): Promise<{
     status: "INGESTED" | "DUPLICATED" | "CANCELED" | "UNASSIGNED";
     pointsEarned?: number;
     saleId?: string;
   }> {
     const db = getDatabase();
-    const adapter = this.getAdapter(provider);
+    const effectiveRestoId = sale.restaurantId || restaurantId || DEFAULT_RESTAURANT_ID;
+    const adapter = this.getAdapter(provider, effectiveRestoId);
 
     // 1. Idempotencia y anulación
     const existing = db
-      .prepare("SELECT id, status FROM sales WHERE external_sale_id = ?")
-      .get(sale.externalSaleId) as { id: string; status: string } | undefined;
+      .prepare("SELECT id, status FROM sales WHERE external_sale_id = ? AND restaurant_id = ?")
+      .get(sale.externalSaleId, effectiveRestoId) as { id: string; status: string } | undefined;
 
     if (sale.status === "CANCELED") {
       if (existing && existing.status !== "CANCELED") {
@@ -283,18 +292,18 @@ export class PosGateway {
     let customer: Customer | null = null;
 
     if (sale.customer?.externalId) {
-      customer = findCustomerByPosId(provider, sale.customer.externalId);
+      customer = findCustomerByPosId(provider, sale.customer.externalId, effectiveRestoId);
     }
 
     if (!customer && sale.customer?.documentNumber) {
-      customer = findCustomerByDocument(sale.customer.documentNumber);
+      customer = findCustomerByDocument(sale.customer.documentNumber, effectiveRestoId);
       if (customer && sale.customer.externalId) {
         linkCustomerPosId(customer.id, provider, sale.customer.externalId);
       }
     }
 
     if (!customer && sale.customer?.phone) {
-      customer = findCustomerByPhone(sale.customer.phone);
+      customer = findCustomerByPhone(sale.customer.phone, effectiveRestoId);
       if (customer && sale.customer.externalId) {
         linkCustomerPosId(customer.id, provider, sale.customer.externalId);
       }
@@ -316,7 +325,7 @@ export class PosGateway {
             return { status: "UNASSIGNED" };
           }
 
-          const existingByDoc = findCustomerByDocument(docNumber);
+          const existingByDoc = findCustomerByDocument(docNumber, effectiveRestoId);
           if (existingByDoc) {
             if (isLegalEntityCuit(existingByDoc.document_number)) {
               return { status: "UNASSIGNED" };
@@ -332,7 +341,7 @@ export class PosGateway {
               email: fetched.email,
               birth_date: fetched.birthDate,
               loyalty_enrolled: 0,
-            });
+            }, effectiveRestoId);
           }
         }
       } catch (fetchCustErr) {
@@ -345,7 +354,7 @@ export class PosGateway {
       if (isLegalEntityCuit(docNumber)) {
         return { status: "UNASSIGNED" };
       }
-      const existingByDoc = findCustomerByDocument(docNumber) || (sale.customer.phone ? findCustomerByPhone(sale.customer.phone) : null);
+      const existingByDoc = findCustomerByDocument(docNumber, effectiveRestoId) || (sale.customer.phone ? findCustomerByPhone(sale.customer.phone, effectiveRestoId) : null);
       if (existingByDoc) {
         if (isLegalEntityCuit(existingByDoc.document_number)) {
           return { status: "UNASSIGNED" };
@@ -357,7 +366,7 @@ export class PosGateway {
           name: sale.customer.name || `Comensal #${docNumber}`,
           phone: sale.customer.phone,
           loyalty_enrolled: 0,
-        });
+        }, effectiveRestoId);
       }
     }
 
@@ -375,6 +384,7 @@ export class PosGateway {
       saleType: sale.saleType,
       externalSaleId: sale.externalSaleId,
       concept: sale.concept || `Venta ${adapter.displayName} #${sale.externalSaleId} (${typeLabel})`,
+      restaurantId: effectiveRestoId,
     });
 
     if (result.success) {
@@ -410,7 +420,8 @@ export class PosGateway {
     customer: Customer,
     provider: PosProviderType = "FUDO"
   ): Promise<{ success: boolean; externalId?: string; message?: string }> {
-    const adapter = this.getAdapter(provider);
+    const effectiveRestoId = customer.restaurant_id || DEFAULT_RESTAURANT_ID;
+    const adapter = this.getAdapter(provider, effectiveRestoId);
     if (!adapter.getCapabilities().supportsPushCustomer) {
       return { success: false, message: `El proveedor ${provider} no admite alta de clientes.` };
     }
@@ -457,8 +468,13 @@ export class PosGateway {
       return { success: true, message: "Ping de prueba procesado exitosamente." };
     }
 
+    const effectiveRestoId = event.restaurantId || event.sale?.restaurantId || DEFAULT_RESTAURANT_ID;
+    if (event.sale && !event.sale.restaurantId) {
+      event.sale.restaurantId = effectiveRestoId;
+    }
+
     if (event.eventType === "SALE_CLOSED" && event.sale) {
-      const ingestRes = await this.ingestCanonicalSale(event.sale, event.provider);
+      const ingestRes = await this.ingestCanonicalSale(event.sale, event.provider, effectiveRestoId);
       return {
         success: ingestRes.status === "INGESTED" || ingestRes.status === "DUPLICATED",
         message:
@@ -474,8 +490,8 @@ export class PosGateway {
     if (event.eventType === "SALE_CANCELED" && event.sale) {
       const db = getDatabase();
       const existing = db
-        .prepare("SELECT id, status FROM sales WHERE external_sale_id = ?")
-        .get(event.sale.externalSaleId) as { id: string; status: string } | undefined;
+        .prepare("SELECT id, status FROM sales WHERE external_sale_id = ? AND restaurant_id = ?")
+        .get(event.sale.externalSaleId, effectiveRestoId) as { id: string; status: string } | undefined;
 
       if (existing && existing.status !== "CANCELED") {
         cancelSale(existing.id, `Anulación en tiempo real desde ${event.provider}`);

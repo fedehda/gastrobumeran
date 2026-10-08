@@ -1,5 +1,6 @@
 import { getDatabase, DEFAULT_RESTAURANT_ID } from "./db";
 import { FudoConfig } from "@/types/loyalty";
+import { encryptCredential, decryptCredential } from "@/lib/security/crypto";
 
 export function getFudoConfig(restaurantId: string = DEFAULT_RESTAURANT_ID): FudoConfig {
   const db = getDatabase();
@@ -38,8 +39,8 @@ export function getFudoConfig(restaurantId: string = DEFAULT_RESTAURANT_ID): Fud
   return {
     id: row.id,
     restaurant_id: row.restaurant_id || restaurantId,
-    api_key: envKey || row.api_key,
-    api_secret: envSecret || row.api_secret,
+    api_key: envKey || decryptCredential(row.api_key),
+    api_secret: envSecret || decryptCredential(row.api_secret),
     base_url: envBaseUrl || row.base_url,
     auth_url: envAuthUrl || row.auth_url || "https://auth.fu.do/api",
     bearer_token: row.bearer_token,
@@ -73,11 +74,15 @@ export function updateFudoConfig(
   const interval = input.sync_interval_minutes !== undefined ? Math.max(1, Number(input.sync_interval_minutes)) : current.sync_interval_minutes;
   const now = new Date().toISOString();
 
+  // Store encrypted credentials in database
+  const apiKeyToSave = encryptCredential(apiKey);
+  const apiSecretToSave = encryptCredential(apiSecret);
+
   db.prepare(`
     UPDATE fudo_config
     SET api_key = ?, api_secret = ?, base_url = ?, auth_url = ?, auto_sync_enabled = ?, sync_interval_minutes = ?, updated_at = ?
     WHERE id = ? AND restaurant_id = ?
-  `).run(apiKey, apiSecret, baseUrl, authUrl, autoSync, interval, now, current.id, restaurantId);
+  `).run(apiKeyToSave, apiSecretToSave, baseUrl, authUrl, autoSync, interval, now, current.id, restaurantId);
 
   return getFudoConfig(restaurantId);
 }

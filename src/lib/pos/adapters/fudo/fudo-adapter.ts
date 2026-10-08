@@ -71,7 +71,7 @@ export class FudoAdapter implements IPosAdapter {
     until?: string;
     limit?: number;
   }): Promise<CanonicalSale[]> {
-    const apiClient = new FudoApiClient();
+    const apiClient = new FudoApiClient(this.client.getConfig());
     const sales = await apiClient.getClosedSales(options?.since, options?.until);
 
     return sales.map((s) => ({
@@ -93,7 +93,7 @@ export class FudoAdapter implements IPosAdapter {
 
   public async fetchCustomer(externalId: string): Promise<CanonicalCustomer | null> {
     if (!externalId) return null;
-    const apiClient = new FudoApiClient();
+    const apiClient = new FudoApiClient(this.client.getConfig());
     const cust = await apiClient.getCustomer(externalId);
     if (!cust) return null;
     return {
@@ -113,7 +113,7 @@ export class FudoAdapter implements IPosAdapter {
     limit?: number;
     sort?: string;
   }): Promise<CanonicalCustomer[]> {
-    const apiClient = new FudoApiClient();
+    const apiClient = new FudoApiClient(this.client.getConfig());
     const rawCustomers = await apiClient.getCustomers({
       activeOnly: options?.activeOnly,
       limit: options?.limit,
@@ -135,7 +135,7 @@ export class FudoAdapter implements IPosAdapter {
   public async createOrUpdateCustomer(
     customer: Partial<CanonicalCustomer>
   ): Promise<CanonicalCustomer> {
-    const apiClient = new FudoApiClient();
+    const apiClient = new FudoApiClient(this.client.getConfig());
     const created = await apiClient.createCustomer({
       name: customer.name || "",
       documentNumber: customer.documentNumber,

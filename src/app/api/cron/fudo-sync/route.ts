@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getFudoConfig } from "@/lib/db/fudo-repo";
 import { syncFudoSales } from "@/lib/fudo/sync";
 import { logCronExecution } from "@/lib/db/cron-repo";
+import { getAllRestaurants, getRestaurantById } from "@/lib/db/restaurant-repo";
 
 export async function POST(req: Request) {
   const startTime = Date.now();
@@ -21,72 +22,101 @@ export async function POST(req: Request) {
 
   const url = new URL(req.url);
   const force = url.searchParams.get("force") === "true";
+  const targetRestaurantId = url.searchParams.get("restaurantId") || url.searchParams.get("resto");
 
-  const config = getFudoConfig();
-
-  // If not enabled and not forced, skip
-  if (!config.auto_sync_enabled && !force) {
-    const summary = "Sincronización automática de Fudo omitida: Auto-sync desactivado en configuración.";
-    logCronExecution({
-      job_name: "FUDO_AUTO_SYNC",
-      status: "WARNING",
-      summary,
-      duration_ms: Date.now() - startTime,
-    });
-    return NextResponse.json({ success: true, skipped: true, reason: summary });
+  // Determine list of restaurants to process
+  let restaurantsToSync: Array<{ id: string; name: string }> = [];
+  if (targetRestaurantId) {
+    const resto = getRestaurantById(targetRestaurantId);
+    if (!resto) {
+      return NextResponse.json({ error: "Restaurante no encontrado" }, { status: 404 });
+    }
+    restaurantsToSync = [{ id: resto.id, name: resto.name }];
+  } else {
+    restaurantsToSync = getAllRestaurants()
+      .filter((r) => r.status === "ACTIVE" || r.status === "TRIAL_DEMO")
+      .map((r) => ({ id: r.id, name: r.name }));
   }
 
-  // Check interval if not forced
-  if (!force && config.last_sync_at) {
-    const lastSyncTime = new Date(config.last_sync_at).getTime();
-    const elapsedMinutes = (Date.now() - lastSyncTime) / (1000 * 60);
+  const results: Record<string, unknown>[] = [];
+  let totalSynced = 0;
+  let totalPoints = 0;
 
-    if (elapsedMinutes < config.sync_interval_minutes) {
-      const summary = `Sincronización omitida: solo pasaron ${Math.round(elapsedMinutes)}m de los ${config.sync_interval_minutes}m configurados.`;
-      return NextResponse.json({ success: true, skipped: true, reason: summary });
+  for (const resto of restaurantsToSync) {
+    const restoStart = Date.now();
+    const config = getFudoConfig(resto.id);
+
+    // If not enabled and not forced, skip this restaurant
+    if (!config.auto_sync_enabled && !force) {
+      continue;
+    }
+
+    // Check interval if not forced
+    if (!force && config.last_sync_at) {
+      const lastSyncTime = new Date(config.last_sync_at).getTime();
+      const elapsedMinutes = (Date.now() - lastSyncTime) / (1000 * 60);
+
+      if (elapsedMinutes < config.sync_interval_minutes) {
+        continue;
+      }
+    }
+
+    try {
+      const result = await syncFudoSales(undefined, resto.id);
+      const durationMs = Date.now() - restoStart;
+      const summary = `[${resto.name}] Sincronización Fudo completada en ${durationMs}ms: ${result.syncedCount} ventas ingeridas (${result.totalPointsEarned} pts emitidos).`;
+
+      logCronExecution(
+        {
+          job_name: "FUDO_AUTO_SYNC",
+          status: result.errors.length > 0 ? "WARNING" : "SUCCESS",
+          summary,
+          details: {
+            restaurantId: resto.id,
+            totalRetrieved: result.totalRetrieved,
+            syncedCount: result.syncedCount,
+            duplicatedCount: result.duplicatedCount,
+            newCustomersCount: result.newCustomersCount,
+            totalPointsEarned: result.totalPointsEarned,
+            totalAmountProcessed: result.totalAmountProcessed,
+            errors: result.errors,
+          },
+          duration_ms: durationMs,
+        },
+        resto.id
+      );
+
+      totalSynced += result.syncedCount;
+      totalPoints += result.totalPointsEarned;
+      results.push({ restaurantId: resto.id, name: resto.name, result });
+    } catch (error: unknown) {
+      const durationMs = Date.now() - restoStart;
+      const message = error instanceof Error ? error.message : "Error durante sincronización";
+
+      logCronExecution(
+        {
+          job_name: "FUDO_AUTO_SYNC",
+          status: "ERROR",
+          summary: `[${resto.name}] Fallo en sincronización Fudo: ${message}`,
+          details: { error: message },
+          duration_ms: durationMs,
+        },
+        resto.id
+      );
+
+      results.push({ restaurantId: resto.id, name: resto.name, error: message });
     }
   }
 
-  try {
-    const result = await syncFudoSales();
-    const durationMs = Date.now() - startTime;
-    const summary = `Sincronización Fudo completada en ${durationMs}ms: ${result.syncedCount} ventas ingeridas (${result.totalPointsEarned} pts emitidos, $${result.totalAmountProcessed} ARS). ${result.newCustomersCount} comensales nuevos, ${result.duplicatedCount} duplicadas omitidas.`;
-
-    logCronExecution({
-      job_name: "FUDO_AUTO_SYNC",
-      status: result.errors.length > 0 ? "WARNING" : "SUCCESS",
-      summary,
-      details: {
-        totalRetrieved: result.totalRetrieved,
-        syncedCount: result.syncedCount,
-        duplicatedCount: result.duplicatedCount,
-        newCustomersCount: result.newCustomersCount,
-        totalPointsEarned: result.totalPointsEarned,
-        totalAmountProcessed: result.totalAmountProcessed,
-        errors: result.errors,
-      },
-      duration_ms: durationMs,
-    });
-
-    return NextResponse.json({
-      success: true,
-      durationMs,
-      result,
-    });
-  } catch (error: unknown) {
-    const durationMs = Date.now() - startTime;
-    const message = error instanceof Error ? error.message : "Error durante sincronización automática con Fudo";
-
-    logCronExecution({
-      job_name: "FUDO_AUTO_SYNC",
-      status: "ERROR",
-      summary: `Fallo en cron de sincronización Fudo: ${message}`,
-      details: { error: message },
-      duration_ms: durationMs,
-    });
-
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  const overallDuration = Date.now() - startTime;
+  return NextResponse.json({
+    success: true,
+    restaurantsProcessed: restaurantsToSync.length,
+    totalSyncedSales: totalSynced,
+    totalPointsIssued: totalPoints,
+    overallDurationMs: overallDuration,
+    results,
+  });
 }
 
 export async function GET(req: Request) {

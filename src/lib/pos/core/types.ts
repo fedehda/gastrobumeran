@@ -23,6 +23,7 @@ export interface CanonicalSaleItem {
 
 export interface CanonicalSale {
   id?: string;
+  restaurantId?: string;
   externalSaleId: string;
   provider: PosProviderType;
   totalAmount: number;
@@ -37,6 +38,7 @@ export interface CanonicalSale {
 
 export interface CanonicalCustomer {
   externalId: string;
+  restaurantId?: string;
   provider: PosProviderType;
   documentNumber?: string | null;
   name: string;
@@ -56,6 +58,7 @@ export type CanonicalEventType =
 
 export interface CanonicalEvent {
   eventType: CanonicalEventType;
+  restaurantId?: string;
   provider: PosProviderType;
   timestamp: string;
   sale?: CanonicalSale;
@@ -73,6 +76,7 @@ export interface PosAdapterCapabilities {
 }
 
 export interface PosSyncOptions {
+  restaurantId?: string;
   provider?: PosProviderType;
   fullSync?: boolean;
   syncCustomers?: boolean;

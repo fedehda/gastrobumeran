@@ -16,7 +16,8 @@ export class PosWebhookHandler {
     providerName: string,
     payload: unknown,
     headers: Record<string, string>,
-    querySecret?: string | null
+    querySecret?: string | null,
+    restaurantId?: string
   ): Promise<WebhookProcessingResult> {
     const normalizedProvider = providerName.trim().toUpperCase() as PosProviderType;
 
@@ -39,7 +40,7 @@ export class PosWebhookHandler {
     }
 
     try {
-      const adapter = posGateway.getAdapter(normalizedProvider);
+      const adapter = posGateway.getAdapter(normalizedProvider, restaurantId);
       const canonicalEvent = adapter.translateWebhookPayload(payload, headers);
 
       if (!canonicalEvent) {
@@ -49,6 +50,13 @@ export class PosWebhookHandler {
           statusCode: 422,
           details: payload,
         };
+      }
+
+      if (restaurantId) {
+        canonicalEvent.restaurantId = restaurantId;
+        if (canonicalEvent.sale) {
+          canonicalEvent.sale.restaurantId = restaurantId;
+        }
       }
 
       const result = await posGateway.processRealtimeEvent(canonicalEvent);

@@ -16,12 +16,18 @@ export async function POST(
 
     const searchParams = req.nextUrl.searchParams;
     const querySecret = searchParams.get("secret") || searchParams.get("key");
+    const queryRestaurantId =
+      searchParams.get("restaurantId") ||
+      searchParams.get("resto") ||
+      headersRecord["x-restaurant-id"] ||
+      undefined;
 
     const result = await PosWebhookHandler.handleIncomingWebhook(
       provider,
       rawBody,
       headersRecord,
-      querySecret
+      querySecret,
+      queryRestaurantId
     );
 
     return NextResponse.json(
