@@ -1,7 +1,8 @@
-import { getDatabase } from "@/lib/db/db";
+import { getDatabase, DEFAULT_RESTAURANT_ID } from "@/lib/db/db";
 import { getLoyaltySettings, getRewardById } from "@/lib/db/settings-repo";
 import { findCustomerById, findCustomerByDocument, createCustomer, checkBirthdayStatus } from "@/lib/db/customer-repo";
 import { evaluateBestCampaign } from "@/lib/db/campaign-repo";
+import { getAllRestaurants } from "@/lib/db/restaurant-repo";
 import {
   Customer,
   LoyaltyTransactionResult,
@@ -17,6 +18,7 @@ import {
 import crypto from "crypto";
 
 export interface ProcessSaleInput {
+  restaurantId?: string;
   customerId?: string;
   documentNumber?: string;
   customerName?: string;
@@ -33,21 +35,25 @@ export interface ProcessSaleInput {
 
 export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   const db = getDatabase();
-  const settings = getLoyaltySettings();
 
-  // 1. Resolve Customer
+  // 1. Resolve Customer and Restaurant Context
   let customer: Customer | null = null;
+  let effectiveRestoId = input.restaurantId || DEFAULT_RESTAURANT_ID;
+
   if (input.customerId) {
     customer = findCustomerById(input.customerId);
+    if (customer && customer.restaurant_id) {
+      effectiveRestoId = customer.restaurant_id;
+    }
   } else if (input.documentNumber) {
-    customer = findCustomerByDocument(input.documentNumber);
+    customer = findCustomerByDocument(input.documentNumber, effectiveRestoId);
     if (!customer && input.customerName) {
       customer = createCustomer({
         document_number: input.documentNumber,
         name: input.customerName,
         phone: input.customerPhone,
         birth_date: input.birthDate,
-      });
+      }, effectiveRestoId);
     }
   }
 
@@ -55,12 +61,17 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
     throw new Error("No se encontró el cliente ni se proporcionaron datos para crearlo.");
   }
 
+  if (customer.restaurant_id) {
+    effectiveRestoId = customer.restaurant_id;
+  }
+
+  const settings = getLoyaltySettings(effectiveRestoId);
   const saleDateObj = input.saleDate ? new Date(input.saleDate) : new Date();
   const saleDateStr = saleDateObj.toISOString();
 
-  // 2. Idempotency Check on externalSaleId
+  // 2. Idempotency Check on externalSaleId scoped to restaurant
   if (input.externalSaleId) {
-    const existingSale = db.prepare("SELECT * FROM sales WHERE external_sale_id = ?").get(input.externalSaleId) as Sale | undefined;
+    const existingSale = db.prepare("SELECT * FROM sales WHERE external_sale_id = ? AND restaurant_id = ?").get(input.externalSaleId, effectiveRestoId) as Sale | undefined;
     if (existingSale) {
       const history = db.prepare("SELECT * FROM points_history WHERE sale_id = ?").get(existingSale.id) as PointsHistory | undefined;
       return {
@@ -71,6 +82,7 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
         points_expire_at: customer.points_expire_at || saleDateStr,
         points_history_entry: history || {
           id: "",
+          restaurant_id: effectiveRestoId,
           customer_id: customer.id,
           points: 0,
           concept: "Venta duplicada (Idempotencia)",
@@ -101,16 +113,15 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   const earningRate = Math.max(1, settings.points_earning_rate);
   const basePoints = isEnrolled ? Math.floor(input.totalAmount / earningRate) : 0;
 
-  // Evaluar mejor campaña promocional aplicable (Happy Hour, Días Valle, etc.)
+  // Evaluar mejor campaña promocional aplicable para este restaurante
   let campaignResult: CampaignEvaluationResult | null = null;
   if (isEnrolled && basePoints > 0) {
-    campaignResult = evaluateBestCampaign(saleDateObj, input.totalAmount, basePoints, saleSector);
+    campaignResult = evaluateBestCampaign(saleDateObj, input.totalAmount, basePoints, saleSector, effectiveRestoId);
   }
   const extraPoints = campaignResult ? campaignResult.extraPoints : 0;
   const pointsEarned = basePoints + extraPoints;
 
   // 4. Eje Visitas y Antifraude Cooldown (RF-04)
-  // Regla de Negocio: Se evalúa dinámicamente según la configuración de sectores (Salón, Mostrador, Delivery) si computa visita.
   let sectorAllowsVisit = true;
   if (isCounter) {
     sectorAllowsVisit = Boolean(settings.allow_visit_counter);
@@ -160,16 +171,17 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
 
   db.exec("BEGIN");
   try {
-    // Insert Sale
+    // Insert Sale with restaurant_id
     db.prepare(`
       INSERT INTO sales (
-        id, external_sale_id, customer_id, source, total_amount,
+        id, restaurant_id, external_sale_id, customer_id, source, total_amount,
         sale_date, status, visit_added, campaign_id, campaign_multiplier,
         campaign_bonus_points, import_batch_id, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, 'CLOSED', ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'CLOSED', ?, ?, ?, ?, ?, ?)
     `).run(
       saleId,
+      effectiveRestoId,
       input.externalSaleId || null,
       customer.id,
       source,
@@ -183,13 +195,14 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       nowStr
     );
 
-    // If points earned, create FIFO batch (Timer 2)
+    // If points earned, create FIFO batch with restaurant_id (Timer 2)
     if (pointsEarned > 0) {
       db.prepare(`
-        INSERT INTO points_batches (id, customer_id, sale_id, points_earned, points_remaining, expires_at, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+        INSERT INTO points_batches (id, restaurant_id, customer_id, sale_id, points_earned, points_remaining, expires_at, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
       `).run(
         batchId,
+        effectiveRestoId,
         customer.id,
         saleId,
         pointsEarned,
@@ -199,12 +212,13 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
       );
     }
 
-    // Insert Points History
+    // Insert Points History with restaurant_id
     db.prepare(`
-      INSERT INTO points_history (id, customer_id, sale_id, points, concept, campaign_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO points_history (id, restaurant_id, customer_id, sale_id, points, concept, campaign_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       historyId,
+      effectiveRestoId,
       customer.id,
       saleId,
       pointsEarned,
@@ -226,52 +240,43 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
           visit_count = ?,
           last_visit_at = ?,
           points_expire_at = ?
-      WHERE id = ?
+      WHERE id = ? AND restaurant_id = ?
     `).run(
       newPointsBalance,
       newTotalSpent,
       newVisitCount,
       newLastVisitAt,
       newExpirationStr,
-      customer.id
+      customer.id,
+      effectiveRestoId
     );
 
     db.exec("COMMIT");
 
-    const updatedCustomer = findCustomerById(customer.id)!;
+    const updatedCustomer = findCustomerById(customer.id, effectiveRestoId)!;
     const historyEntry = db.prepare("SELECT * FROM points_history WHERE id = ?").get(historyId) as PointsHistory;
-    const saleEntry = db.prepare("SELECT * FROM sales WHERE id = ?").get(saleId) as Sale;
+    const saleRecord = db.prepare("SELECT * FROM sales WHERE id = ?").get(saleId) as Sale;
 
     return {
       success: true,
       customer: updatedCustomer,
-      sale: saleEntry,
+      sale: saleRecord,
       points_earned: pointsEarned,
       base_points: basePoints,
       campaign_bonus_points: extraPoints,
-      applied_campaign: campaignResult
-        ? {
-            id: campaignResult.campaign.id,
-            name: campaignResult.campaign.name,
-            multiplier: campaignResult.multiplier,
-            bonus_points: campaignResult.bonusPoints,
-          }
-        : null,
+      applied_campaign: campaignResult ? {
+        id: campaignResult.campaign.id,
+        name: campaignResult.campaign.name,
+        multiplier: campaignResult.multiplier,
+        bonus_points: campaignResult.bonusPoints,
+      } : null,
       visit_added: visitAdded,
       points_expire_at: newExpirationStr,
-      batch_expires_at: batchExpiresAt,
+      batch_expires_at: pointsEarned > 0 ? batchExpiresAt : undefined,
       points_history_entry: historyEntry,
-      message: isEnrolled
-        ? `¡Venta registrada con éxito! Sumaste ${pointsEarned} puntos${
-            campaignResult ? ` (incluye +${extraPoints} pts promo "${campaignResult.campaign.name}")` : ""
-          }${
-            visitAdded
-              ? " y 1 visita"
-              : !sectorAllowsVisit
-              ? ` (${isCounter ? "mostrador" : isDelivery ? "delivery" : "salón"} no suma visita según configuración)`
-              : ""
-          }. Vencimiento rolling renovado a ${expirationDays} días. Lote FIFO activo por ${lifetimeDays} días.`
-        : `¡Venta registrada con éxito! El comensal no está adherido a fidelidad (0 puntos acreditados).`,
+      message: `Venta procesada con éxito: +${pointsEarned} puntos${visitAdded ? " y +1 visita" : ""}.${
+        campaignResult ? ` ¡Aplica ${campaignResult.campaign.name}!` : ""
+      }`,
     };
   } catch (err: unknown) {
     db.exec("ROLLBACK");
@@ -279,20 +284,25 @@ export function processSale(input: ProcessSaleInput): LoyaltyTransactionResult {
   }
 }
 
-export function redeemReward(customerId: string, rewardId: number): RedemptionResult {
+export function redeemReward(
+  customerId: string,
+  rewardId: number,
+  restaurantId?: string
+): RedemptionResult {
   const db = getDatabase();
-  const customer = findCustomerById(customerId);
+  const customer = findCustomerById(customerId, restaurantId);
   if (!customer) {
     throw new Error("Cliente no encontrado.");
   }
 
-  const reward = getRewardById(rewardId);
+  const effectiveRestoId = restaurantId || customer.restaurant_id || DEFAULT_RESTAURANT_ID;
+  const reward = getRewardById(rewardId, effectiveRestoId);
   if (!reward) {
     throw new Error("Recompensa no encontrada.");
   }
 
   if (!reward.is_active) {
-    throw new Error("La recompensa seleccionada no está disponible.");
+    throw new Error("Esta recompensa se encuentra pausada temporalmente.");
   }
 
   const nowStr = new Date().toISOString();
@@ -309,12 +319,12 @@ export function redeemReward(customerId: string, rewardId: number): RedemptionRe
       let needed = reward.requirement_value;
       const batchesConsumed: Array<{ batch_id: string; points_consumed: number }> = [];
 
-      // Query active batches ordered FIFO by expires_at ASC
+      // Query active batches ordered FIFO by expires_at ASC for this customer and restaurant
       const activeBatches = db.prepare(`
         SELECT * FROM points_batches
-        WHERE customer_id = ? AND status = 'ACTIVE' AND points_remaining > 0
+        WHERE customer_id = ? AND restaurant_id = ? AND status = 'ACTIVE' AND points_remaining > 0
         ORDER BY expires_at ASC
-      `).all(customer.id) as PointsBatch[];
+      `).all(customer.id, effectiveRestoId) as PointsBatch[];
 
       for (const batch of activeBatches) {
         if (needed <= 0) break;
@@ -338,19 +348,19 @@ export function redeemReward(customerId: string, rewardId: number): RedemptionRe
       db.prepare(`
         UPDATE customers
         SET points_balance = ?
-        WHERE id = ?
-      `).run(newPoints, customer.id);
+        WHERE id = ? AND restaurant_id = ?
+      `).run(newPoints, customer.id, effectiveRestoId);
 
-      // Insert negative history
+      // Insert negative history with restaurant_id
       const concept = `Canje FIFO: ${reward.name} (-${reward.requirement_value} pts)`;
       db.prepare(`
-        INSERT INTO points_history (id, customer_id, points, concept, created_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(historyId, customer.id, -reward.requirement_value, concept, nowStr);
+        INSERT INTO points_history (id, restaurant_id, customer_id, points, concept, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(historyId, effectiveRestoId, customer.id, -reward.requirement_value, concept, nowStr);
 
       db.exec("COMMIT");
 
-      const updatedCustomer = findCustomerById(customer.id)!;
+      const updatedCustomer = findCustomerById(customer.id, effectiveRestoId)!;
       const historyEntry = db.prepare("SELECT * FROM points_history WHERE id = ?").get(historyId) as PointsHistory;
 
       return {
@@ -378,13 +388,13 @@ export function redeemReward(customerId: string, rewardId: number): RedemptionRe
     try {
       const concept = `Canje de Hito de Visita: ${reward.name} (Alcanzó ${customer.visit_count} visitas)`;
       db.prepare(`
-        INSERT INTO points_history (id, customer_id, points, concept, created_at)
-        VALUES (?, ?, 0, ?, ?)
-      `).run(historyId, customer.id, concept, nowStr);
+        INSERT INTO points_history (id, restaurant_id, customer_id, points, concept, created_at)
+        VALUES (?, ?, ?, 0, ?, ?)
+      `).run(historyId, effectiveRestoId, customer.id, concept, nowStr);
 
       db.exec("COMMIT");
 
-      const updatedCustomer = findCustomerById(customer.id)!;
+      const updatedCustomer = findCustomerById(customer.id, effectiveRestoId)!;
       const historyEntry = db.prepare("SELECT * FROM points_history WHERE id = ?").get(historyId) as PointsHistory;
 
       return {
@@ -403,19 +413,20 @@ export function redeemReward(customerId: string, rewardId: number): RedemptionRe
 
   // 3. Birthday Gift Reward
   if (reward.reward_type === "BIRTHDAY_GIFT") {
-    return redeemBirthdayCourtesy(customer.id);
+    return redeemBirthdayCourtesy(customer.id, effectiveRestoId);
   }
 
   throw new Error("Tipo de recompensa no reconocido.");
 }
 
-export function redeemBirthdayCourtesy(customerId: string): RedemptionResult {
+export function redeemBirthdayCourtesy(customerId: string, restaurantId?: string): RedemptionResult {
   const db = getDatabase();
-  const customer = findCustomerById(customerId);
+  const customer = findCustomerById(customerId, restaurantId);
   if (!customer) {
     throw new Error("Cliente no encontrado.");
   }
 
+  const effectiveRestoId = restaurantId || customer.restaurant_id || DEFAULT_RESTAURANT_ID;
   const bdayStatus = checkBirthdayStatus(customer);
   if (!bdayStatus.isEligible) {
     throw new Error(bdayStatus.message);
@@ -425,10 +436,11 @@ export function redeemBirthdayCourtesy(customerId: string): RedemptionResult {
   const nowStr = new Date().toISOString();
   const historyId = crypto.randomUUID();
 
-  // Find or create birthday reward object
-  const existingReward = db.prepare("SELECT * FROM loyalty_rewards WHERE reward_type = 'BIRTHDAY_GIFT'").get() as LoyaltyReward | undefined;
+  // Find or create birthday reward object for this restaurant
+  const existingReward = db.prepare("SELECT * FROM loyalty_rewards WHERE reward_type = 'BIRTHDAY_GIFT' AND restaurant_id = ?").get(effectiveRestoId) as LoyaltyReward | undefined;
   const reward: LoyaltyReward = existingReward || {
     id: 9999,
+    restaurant_id: effectiveRestoId,
     name: "Cortesía Anual: Postre de Cumpleaños de la Casa",
     reward_type: "BIRTHDAY_GIFT",
     requirement_value: 0,
@@ -443,19 +455,19 @@ export function redeemBirthdayCourtesy(customerId: string): RedemptionResult {
     db.prepare(`
       UPDATE customers
       SET last_birthday_reward_year = ?
-      WHERE id = ?
-    `).run(currentYear, customer.id);
+      WHERE id = ? AND restaurant_id = ?
+    `).run(currentYear, customer.id, effectiveRestoId);
 
     // Log in points_history with points = 0
     const concept = `Cortesía de cumpleaños: Postre de la casa (${currentYear})`;
     db.prepare(`
-      INSERT INTO points_history (id, customer_id, points, concept, created_at)
-      VALUES (?, ?, 0, ?, ?)
-    `).run(historyId, customer.id, concept, nowStr);
+      INSERT INTO points_history (id, restaurant_id, customer_id, points, concept, created_at)
+      VALUES (?, ?, ?, 0, ?, ?)
+    `).run(historyId, effectiveRestoId, customer.id, concept, nowStr);
 
     db.exec("COMMIT");
 
-    const updatedCustomer = findCustomerById(customer.id)!;
+    const updatedCustomer = findCustomerById(customer.id, effectiveRestoId)!;
     const historyEntry = db.prepare("SELECT * FROM points_history WHERE id = ?").get(historyId) as PointsHistory;
 
     return {
@@ -472,7 +484,7 @@ export function redeemBirthdayCourtesy(customerId: string): RedemptionResult {
   }
 }
 
-export function runExpirationAudit(): {
+export function runExpirationAudit(restaurantId?: string): {
   inactivityExpiredCount: number;
   inactivityPointsExpired: number;
   batchesExpiredCount: number;
@@ -484,6 +496,34 @@ export function runExpirationAudit(): {
   const now = new Date();
   const nowStr = now.toISOString();
 
+  // If no restaurantId provided, run across all active restaurants
+  if (!restaurantId) {
+    const restos = getAllRestaurants().filter((r) => r.status === "ACTIVE" || r.status === "TRIAL_DEMO");
+    let totalInactCount = 0;
+    let totalInactPts = 0;
+    let totalBatchCount = 0;
+    let totalBatchPts = 0;
+    const allAlerts: Customer[] = [];
+
+    for (const r of restos) {
+      const res = runExpirationAudit(r.id);
+      totalInactCount += res.inactivityExpiredCount;
+      totalInactPts += res.inactivityPointsExpired;
+      totalBatchCount += res.batchesExpiredCount;
+      totalBatchPts += res.batchesPointsExpired;
+      allAlerts.push(...res.day75Alerts);
+    }
+
+    return {
+      inactivityExpiredCount: totalInactCount,
+      inactivityPointsExpired: totalInactPts,
+      batchesExpiredCount: totalBatchCount,
+      batchesPointsExpired: totalBatchPts,
+      totalPointsExpired: totalInactPts + totalBatchPts,
+      day75Alerts: allAlerts,
+    };
+  }
+
   let inactivityExpiredCount = 0;
   let inactivityPointsExpired = 0;
   let batchesExpiredCount = 0;
@@ -491,11 +531,11 @@ export function runExpirationAudit(): {
 
   db.exec("BEGIN");
   try {
-    // 1. Timer 1: Inactivity Expiration (Rolling 90 days)
+    // 1. Timer 1: Inactivity Expiration (Rolling 90 days) for this restaurant
     const inactiveCustomers = db.prepare(`
       SELECT * FROM customers
-      WHERE points_balance > 0 AND points_expire_at IS NOT NULL AND points_expire_at < ?
-    `).all(nowStr) as Customer[];
+      WHERE restaurant_id = ? AND points_balance > 0 AND points_expire_at IS NOT NULL AND points_expire_at < ?
+    `).all(restaurantId, nowStr) as Customer[];
 
     for (const cust of inactiveCustomers) {
       inactivityExpiredCount++;
@@ -504,30 +544,30 @@ export function runExpirationAudit(): {
 
       // Log in history
       db.prepare(`
-        INSERT INTO points_history (id, customer_id, points, concept, created_at)
-        VALUES (?, ?, ?, 'Caducidad por inactividad (+90 días)', datetime('now'))
-      `).run(historyId, cust.id, -cust.points_balance);
+        INSERT INTO points_history (id, restaurant_id, customer_id, points, concept, created_at)
+        VALUES (?, ?, ?, ?, 'Caducidad por inactividad (+90 días)', datetime('now'))
+      `).run(historyId, restaurantId, cust.id, -cust.points_balance);
 
       // Reset customer points balance to 0
       db.prepare(`
         UPDATE customers
         SET points_balance = 0
-        WHERE id = ?
-      `).run(cust.id);
+        WHERE id = ? AND restaurant_id = ?
+      `).run(cust.id, restaurantId);
 
       // Expire all active batches for this customer
       db.prepare(`
         UPDATE points_batches
         SET status = 'EXPIRED', points_remaining = 0
-        WHERE customer_id = ? AND status = 'ACTIVE'
-      `).run(cust.id);
+        WHERE customer_id = ? AND restaurant_id = ? AND status = 'ACTIVE'
+      `).run(cust.id, restaurantId);
     }
 
-    // 2. Timer 2: FIFO Batches Lifetime Expiration (365 days)
+    // 2. Timer 2: FIFO Batches Lifetime Expiration (365 days) for this restaurant
     const expiredBatches = db.prepare(`
       SELECT * FROM points_batches
-      WHERE status = 'ACTIVE' AND points_remaining > 0 AND expires_at < ?
-    `).all(nowStr) as PointsBatch[];
+      WHERE restaurant_id = ? AND status = 'ACTIVE' AND points_remaining > 0 AND expires_at < ?
+    `).all(restaurantId, nowStr) as PointsBatch[];
 
     for (const batch of expiredBatches) {
       batchesExpiredCount++;
@@ -537,24 +577,24 @@ export function runExpirationAudit(): {
       db.prepare(`
         UPDATE points_batches
         SET status = 'EXPIRED', points_remaining = 0
-        WHERE id = ?
-      `).run(batch.id);
+        WHERE id = ? AND restaurant_id = ?
+      `).run(batch.id, restaurantId);
 
       // Deduct from customer
-      const cust = findCustomerById(batch.customer_id);
+      const cust = findCustomerById(batch.customer_id, restaurantId);
       if (cust && cust.points_balance > 0) {
         const deduct = Math.min(cust.points_balance, batch.points_remaining);
         db.prepare(`
           UPDATE customers
           SET points_balance = points_balance - ?
-          WHERE id = ?
-        `).run(deduct, cust.id);
+          WHERE id = ? AND restaurant_id = ?
+        `).run(deduct, cust.id, restaurantId);
 
         const historyId = crypto.randomUUID();
         db.prepare(`
-          INSERT INTO points_history (id, customer_id, points, concept, created_at)
-          VALUES (?, ?, ?, 'Caducidad anual de lote (+365 días)', datetime('now'))
-        `).run(historyId, cust.id, -deduct);
+          INSERT INTO points_history (id, restaurant_id, customer_id, points, concept, created_at)
+          VALUES (?, ?, ?, ?, 'Caducidad anual de lote (+365 días)', datetime('now'))
+        `).run(historyId, restaurantId, cust.id, -deduct);
       }
     }
 
@@ -568,12 +608,13 @@ export function runExpirationAudit(): {
   const future15Days = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000).toISOString();
   const day75Alerts = db.prepare(`
     SELECT * FROM customers
-    WHERE points_balance > 0
+    WHERE restaurant_id = ?
+      AND points_balance > 0
       AND points_expire_at IS NOT NULL
       AND points_expire_at >= ?
       AND points_expire_at <= ?
     ORDER BY points_expire_at ASC
-  `).all(nowStr, future15Days) as Customer[];
+  `).all(restaurantId, nowStr, future15Days) as Customer[];
 
   return {
     inactivityExpiredCount,
@@ -585,17 +626,16 @@ export function runExpirationAudit(): {
   };
 }
 
-/**
- * Anula una venta previamente procesada de forma atómica:
- * - Cambia estado de venta a 'CANCELED'
- * - Extingue lote FIFO generado
- * - Descuenta puntos acreditados y registra asiento contable negativo
- * - Si sumó visita, decrementa visit_count y restaura last_visit_at previa
- * - Descuenta total_spent
- */
-export function cancelSale(saleId: string, reason = "Anulación manual"): CancelSaleResult {
+export function cancelSale(saleId: string, reason = "Anulación manual", restaurantId?: string): CancelSaleResult {
   const db = getDatabase();
-  const sale = db.prepare("SELECT * FROM sales WHERE id = ?").get(saleId) as
+  let saleQuery = "SELECT * FROM sales WHERE id = ?";
+  let params: any[] = [saleId];
+  if (restaurantId) {
+    saleQuery += " AND restaurant_id = ?";
+    params.push(restaurantId);
+  }
+
+  const sale = db.prepare(saleQuery).get(...params) as
     | (Sale & { visit_added?: number })
     | undefined;
 
@@ -607,6 +647,7 @@ export function cancelSale(saleId: string, reason = "Anulación manual"): Cancel
     throw new Error(`La venta #${sale.id.slice(0, 8)} ya se encuentra anulada.`);
   }
 
+  const effectiveRestoId = sale.restaurant_id || restaurantId || DEFAULT_RESTAURANT_ID;
   const nowStr = new Date().toISOString();
 
   // Si la venta no tenía cliente asignado
@@ -622,7 +663,7 @@ export function cancelSale(saleId: string, reason = "Anulación manual"): Cancel
     };
   }
 
-  const customer = findCustomerById(sale.customer_id);
+  const customer = findCustomerById(sale.customer_id, effectiveRestoId);
   if (!customer) {
     throw new Error("Cliente asociado a la venta no encontrado.");
   }
@@ -652,10 +693,11 @@ export function cancelSale(saleId: string, reason = "Anulación manual"): Cancel
     if (pointsEarned > 0) {
       const historyId = crypto.randomUUID();
       db.prepare(`
-        INSERT INTO points_history (id, customer_id, sale_id, points, concept, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO points_history (id, restaurant_id, customer_id, sale_id, points, concept, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
         historyId,
+        effectiveRestoId,
         customer.id,
         saleId,
         -pointsEarned,
@@ -688,18 +730,19 @@ export function cancelSale(saleId: string, reason = "Anulación manual"): Cancel
           total_spent = ?,
           visit_count = ?,
           last_visit_at = ?
-      WHERE id = ?
+      WHERE id = ? AND restaurant_id = ?
     `).run(
       newPointsBalance,
       newTotalSpent,
       newVisitCount,
       newLastVisitAt,
-      customer.id
+      customer.id,
+      effectiveRestoId
     );
 
     db.exec("COMMIT");
 
-    const updatedCustomer = findCustomerById(customer.id)!;
+    const updatedCustomer = findCustomerById(customer.id, effectiveRestoId)!;
     const updatedSale = db.prepare("SELECT * FROM sales WHERE id = ?").get(saleId) as Sale;
 
     return {

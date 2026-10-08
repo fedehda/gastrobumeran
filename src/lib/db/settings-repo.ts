@@ -1,19 +1,20 @@
-import { getDatabase } from "./db";
+import { getDatabase, DEFAULT_RESTAURANT_ID } from "./db";
 import { LoyaltySettings, LoyaltyReward } from "@/types/loyalty";
 
-export function getLoyaltySettings(): LoyaltySettings {
+export function getLoyaltySettings(restaurantId: string = DEFAULT_RESTAURANT_ID): LoyaltySettings {
   const db = getDatabase();
-  const row = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as Record<string, unknown> | undefined;
+  const row = db.prepare("SELECT * FROM loyalty_settings WHERE restaurant_id = ? ORDER BY id ASC LIMIT 1").get(restaurantId) as Record<string, unknown> | undefined;
   if (!row) {
     db.prepare(`
-      INSERT INTO loyalty_settings (points_earning_rate, points_expiration_days, points_lifetime_days, min_spend_for_visit, visit_cooldown_hours, allow_visit_table, allow_visit_counter, allow_visit_delivery)
-      VALUES (100.0, 90, 365, 1500.0, 18, 1, 0, 0)
-    `).run();
-    return getLoyaltySettings();
+      INSERT INTO loyalty_settings (restaurant_id, points_earning_rate, points_expiration_days, points_lifetime_days, min_spend_for_visit, visit_cooldown_hours, allow_visit_table, allow_visit_counter, allow_visit_delivery)
+      VALUES (?, 100.0, 90, 365, 1500.0, 18, 1, 0, 0)
+    `).run(restaurantId);
+    return getLoyaltySettings(restaurantId);
   }
 
   return {
     id: Number(row.id),
+    restaurant_id: String(row.restaurant_id || restaurantId),
     points_earning_rate: Number(row.points_earning_rate),
     points_expiration_days: Number(row.points_expiration_days),
     points_lifetime_days: Number(row.points_lifetime_days || 365),
@@ -28,20 +29,23 @@ export function getLoyaltySettings(): LoyaltySettings {
   };
 }
 
-export function updateLoyaltySettings(settings: {
-  points_earning_rate?: number;
-  points_expiration_days?: number;
-  points_lifetime_days?: number;
-  min_spend_for_visit?: number;
-  visit_cooldown_hours?: number;
-  allow_visit_table?: boolean;
-  allow_visit_counter?: boolean;
-  allow_visit_delivery?: boolean;
-  welcome_points_enabled?: boolean;
-  welcome_points_amount?: number;
-}): LoyaltySettings {
+export function updateLoyaltySettings(
+  settings: {
+    points_earning_rate?: number;
+    points_expiration_days?: number;
+    points_lifetime_days?: number;
+    min_spend_for_visit?: number;
+    visit_cooldown_hours?: number;
+    allow_visit_table?: boolean;
+    allow_visit_counter?: boolean;
+    allow_visit_delivery?: boolean;
+    welcome_points_enabled?: boolean;
+    welcome_points_amount?: number;
+  },
+  restaurantId: string = DEFAULT_RESTAURANT_ID
+): LoyaltySettings {
   const db = getDatabase();
-  const current = getLoyaltySettings();
+  const current = getLoyaltySettings(restaurantId);
 
   const points_earning_rate = settings.points_earning_rate ?? current.points_earning_rate;
   const points_expiration_days = settings.points_expiration_days ?? current.points_expiration_days;
@@ -67,7 +71,7 @@ export function updateLoyaltySettings(settings: {
         welcome_points_enabled = ?,
         welcome_points_amount = ?,
         updated_at = datetime('now')
-    WHERE id = ?
+    WHERE id = ? AND restaurant_id = ?
   `).run(
     points_earning_rate,
     points_expiration_days,
@@ -79,21 +83,23 @@ export function updateLoyaltySettings(settings: {
     allow_visit_delivery,
     welcome_points_enabled,
     welcome_points_amount,
-    current.id
+    current.id,
+    restaurantId
   );
 
-  return getLoyaltySettings();
+  return getLoyaltySettings(restaurantId);
 }
 
-export function getActiveRewards(): LoyaltyReward[] {
+export function getActiveRewards(restaurantId: string = DEFAULT_RESTAURANT_ID): LoyaltyReward[] {
   const db = getDatabase();
   const rows = db.prepare(`
-    SELECT id, name, reward_type, requirement_value, is_active, description, created_at
+    SELECT id, restaurant_id, name, reward_type, requirement_value, is_active, description, created_at
     FROM loyalty_rewards
-    WHERE is_active = 1
+    WHERE is_active = 1 AND restaurant_id = ?
     ORDER BY reward_type ASC, requirement_value ASC
-  `).all() as Array<{
+  `).all(restaurantId) as Array<{
     id: number;
+    restaurant_id: string;
     name: string;
     reward_type: "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
     requirement_value: number;
@@ -108,14 +114,16 @@ export function getActiveRewards(): LoyaltyReward[] {
   }));
 }
 
-export function getAllRewards(): LoyaltyReward[] {
+export function getAllRewards(restaurantId: string = DEFAULT_RESTAURANT_ID): LoyaltyReward[] {
   const db = getDatabase();
   const rows = db.prepare(`
-    SELECT id, name, reward_type, requirement_value, is_active, description, created_at
+    SELECT id, restaurant_id, name, reward_type, requirement_value, is_active, description, created_at
     FROM loyalty_rewards
+    WHERE restaurant_id = ?
     ORDER BY is_active DESC, reward_type ASC, requirement_value ASC
-  `).all() as Array<{
+  `).all(restaurantId) as Array<{
     id: number;
+    restaurant_id: string;
     name: string;
     reward_type: "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
     requirement_value: number;
@@ -130,19 +138,24 @@ export function getAllRewards(): LoyaltyReward[] {
   }));
 }
 
-export function getRewardById(id: number): LoyaltyReward | null {
+export function getRewardById(id: number, restaurantId?: string): LoyaltyReward | null {
   const db = getDatabase();
-  const r = db.prepare("SELECT * FROM loyalty_rewards WHERE id = ?").get(id) as
-    | {
-        id: number;
-        name: string;
-        reward_type: "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
-        requirement_value: number;
-        is_active: number;
-        description: string | null;
-        created_at: string;
-      }
-    | undefined;
+  let r: {
+    id: number;
+    restaurant_id: string;
+    name: string;
+    reward_type: "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
+    requirement_value: number;
+    is_active: number;
+    description: string | null;
+    created_at: string;
+  } | undefined;
+
+  if (restaurantId) {
+    r = db.prepare("SELECT * FROM loyalty_rewards WHERE id = ? AND restaurant_id = ?").get(id, restaurantId) as any;
+  } else {
+    r = db.prepare("SELECT * FROM loyalty_rewards WHERE id = ?").get(id) as any;
+  }
 
   if (!r) return null;
   return {
@@ -151,24 +164,27 @@ export function getRewardById(id: number): LoyaltyReward | null {
   };
 }
 
-export function createReward(data: {
-  name: string;
-  reward_type: "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
-  requirement_value: number;
-  is_active?: boolean;
-  description?: string;
-}): LoyaltyReward {
+export function createReward(
+  data: {
+    name: string;
+    reward_type: "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
+    requirement_value: number;
+    is_active?: boolean;
+    description?: string;
+  },
+  restaurantId: string = DEFAULT_RESTAURANT_ID
+): LoyaltyReward {
   const db = getDatabase();
   const isActive = data.is_active !== undefined ? (data.is_active ? 1 : 0) : 1;
   const desc = data.description ? data.description.trim() : null;
 
   db.prepare(`
-    INSERT INTO loyalty_rewards (name, reward_type, requirement_value, is_active, description, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `).run(data.name.trim(), data.reward_type, data.requirement_value, isActive, desc);
+    INSERT INTO loyalty_rewards (restaurant_id, name, reward_type, requirement_value, is_active, description, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+  `).run(restaurantId, data.name.trim(), data.reward_type, data.requirement_value, isActive, desc);
 
   const lastId = (db.prepare("SELECT last_insert_rowid() as id").get() as { id: number }).id;
-  return getRewardById(lastId)!;
+  return getRewardById(lastId, restaurantId)!;
 }
 
 export function updateReward(
@@ -179,10 +195,11 @@ export function updateReward(
     requirement_value?: number;
     is_active?: boolean;
     description?: string;
-  }
+  },
+  restaurantId?: string
 ): LoyaltyReward {
   const db = getDatabase();
-  const current = getRewardById(id);
+  const current = getRewardById(id, restaurantId);
   if (!current) {
     throw new Error(`Recompensa con ID ${id} no encontrada.`);
   }
@@ -199,23 +216,25 @@ export function updateReward(
     WHERE id = ?
   `).run(name, rewardType, reqVal, isActive, desc, id);
 
-  return getRewardById(id)!;
+  return getRewardById(id, restaurantId)!;
 }
 
-export function toggleRewardStatus(id: number, isActive: boolean): LoyaltyReward {
+export function toggleRewardStatus(id: number, isActive: boolean, restaurantId?: string): LoyaltyReward {
   const db = getDatabase();
+  const current = getRewardById(id, restaurantId);
+  if (!current) throw new Error(`Recompensa con ID ${id} no encontrada.`);
+
   db.prepare("UPDATE loyalty_rewards SET is_active = ? WHERE id = ?").run(isActive ? 1 : 0, id);
-  const updated = getRewardById(id);
-  if (!updated) throw new Error(`Recompensa con ID ${id} no encontrada.`);
-  return updated;
+  const updated = getRewardById(id, restaurantId);
+  return updated!;
 }
 
-export function deleteReward(id: number): boolean {
+export function deleteReward(id: number, restaurantId?: string): boolean {
   const db = getDatabase();
-  const current = getRewardById(id);
+  const current = getRewardById(id, restaurantId);
   if (!current) return false;
 
-  // Protect the special birthday reward from accidental deletion (can still be edited)
+  // Protect the special birthday reward from accidental deletion
   if (current.reward_type === "BIRTHDAY_GIFT") {
     throw new Error("No se puede eliminar la cortesía especial de cumpleaños del sistema.");
   }

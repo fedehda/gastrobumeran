@@ -1,4 +1,4 @@
-import { getDatabase } from "./db";
+import { getDatabase, DEFAULT_RESTAURANT_ID } from "./db";
 import {
   Customer,
   PointsHistory,
@@ -12,36 +12,41 @@ import {
 import { getActiveRewards } from "./settings-repo";
 import { getActiveCampaigns } from "./campaign-repo";
 import { isLegalEntityCuit } from "@/lib/validation/cuit";
+import { checkRestaurantQuota } from "./restaurant-repo";
 import crypto from "crypto";
 
-export function findCustomerById(id: string): Customer | null {
+export function findCustomerById(id: string, restaurantId?: string): Customer | null {
   const db = getDatabase();
+  if (restaurantId) {
+    const row = db.prepare("SELECT * FROM customers WHERE id = ? AND restaurant_id = ?").get(id, restaurantId) as Customer | undefined;
+    return row || null;
+  }
   const row = db.prepare("SELECT * FROM customers WHERE id = ?").get(id) as Customer | undefined;
   return row || null;
 }
 
-export function findCustomerByDocument(document_number: string): Customer | null {
+export function findCustomerByDocument(document_number: string, restaurantId: string = DEFAULT_RESTAURANT_ID): Customer | null {
   const db = getDatabase();
   const cleanDoc = document_number.trim();
-  const row = db.prepare("SELECT * FROM customers WHERE document_number = ?").get(cleanDoc) as Customer | undefined;
+  const row = db.prepare("SELECT * FROM customers WHERE document_number = ? AND restaurant_id = ?").get(cleanDoc, restaurantId) as Customer | undefined;
   return row || null;
 }
 
-export function findCustomerByPhone(phone: string): Customer | null {
+export function findCustomerByPhone(phone: string, restaurantId: string = DEFAULT_RESTAURANT_ID): Customer | null {
   const db = getDatabase();
   const cleanPhone = phone.trim().replace(/[^0-9]/g, "");
   if (!cleanPhone) return null;
-  const row = db.prepare("SELECT * FROM customers WHERE phone LIKE ? LIMIT 1").get(`%${cleanPhone}%`) as Customer | undefined;
+  const row = db.prepare("SELECT * FROM customers WHERE phone LIKE ? AND restaurant_id = ? LIMIT 1").get(`%${cleanPhone}%`, restaurantId) as Customer | undefined;
   return row || null;
 }
 
-export function findCustomerByPosId(provider: string, externalId: string): Customer | null {
+export function findCustomerByPosId(provider: string, externalId: string, restaurantId: string = DEFAULT_RESTAURANT_ID): Customer | null {
   const db = getDatabase();
   const cleanId = (externalId || "").trim();
   if (!cleanId) return null;
 
   if (provider.toUpperCase() === "FUDO") {
-    const row = db.prepare("SELECT * FROM customers WHERE fudo_customer_id = ?").get(cleanId) as Customer | undefined;
+    const row = db.prepare("SELECT * FROM customers WHERE fudo_customer_id = ? AND restaurant_id = ?").get(cleanId, restaurantId) as Customer | undefined;
     if (row) return row;
   }
 
@@ -58,8 +63,8 @@ export function linkCustomerPosId(customerId: string, provider: string, external
   }
 }
 
-export function findCustomerByFudoId(fudoId: string): Customer | null {
-  return findCustomerByPosId("FUDO", fudoId);
+export function findCustomerByFudoId(fudoId: string, restaurantId: string = DEFAULT_RESTAURANT_ID): Customer | null {
+  return findCustomerByPosId("FUDO", fudoId, restaurantId);
 }
 
 export function linkFudoCustomerId(customerId: string, fudoCustomerId: string): void {
@@ -69,32 +74,28 @@ export function linkFudoCustomerId(customerId: string, fudoCustomerId: string): 
 export function searchCustomers(
   query: string,
   limit = 10,
-  filter: "active" | "unenrolled" | "all" = "all"
+  filter: "active" | "unenrolled" | "all" = "all",
+  restaurantId: string = DEFAULT_RESTAURANT_ID
 ): Customer[] {
   const db = getDatabase();
   const clean = query.trim();
 
-  let filterClause = "";
+  let filterClause = "restaurant_id = ?";
   if (filter === "active") {
-    filterClause = "loyalty_enrolled = 1";
+    filterClause += " AND loyalty_enrolled = 1";
   } else if (filter === "unenrolled") {
-    filterClause = "loyalty_enrolled = 0";
+    filterClause += " AND loyalty_enrolled = 0";
   }
 
   if (!clean) {
-    if (filterClause) {
-      return db
-        .prepare(`SELECT * FROM customers WHERE ${filterClause} ORDER BY points_balance DESC, created_at DESC LIMIT ?`)
-        .all(limit) as Customer[];
-    }
     return db
-      .prepare("SELECT * FROM customers ORDER BY points_balance DESC, created_at DESC LIMIT ?")
-      .all(limit) as Customer[];
+      .prepare(`SELECT * FROM customers WHERE ${filterClause} ORDER BY points_balance DESC, created_at DESC LIMIT ?`)
+      .all(restaurantId, limit) as Customer[];
   }
 
   const pattern = `%${clean}%`;
   const baseWhere = "(document_number LIKE ? OR phone LIKE ? OR name LIKE ?)";
-  const finalWhere = filterClause ? `${filterClause} AND ${baseWhere}` : baseWhere;
+  const finalWhere = `${filterClause} AND ${baseWhere}`;
 
   return db
     .prepare(`
@@ -103,18 +104,21 @@ export function searchCustomers(
       ORDER BY points_balance DESC
       LIMIT ?
     `)
-    .all(pattern, pattern, pattern, limit) as Customer[];
+    .all(restaurantId, pattern, pattern, pattern, limit) as Customer[];
 }
 
-export function createCustomer(data: {
-  document_number: string;
-  name: string;
-  phone?: string | null;
-  email?: string | null;
-  birth_date?: string | null;
-  fudo_customer_id?: string | null;
-  loyalty_enrolled?: boolean | number;
-}): Customer {
+export function createCustomer(
+  data: {
+    document_number: string;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    birth_date?: string | null;
+    fudo_customer_id?: string | null;
+    loyalty_enrolled?: boolean | number;
+  },
+  restaurantId: string = DEFAULT_RESTAURANT_ID
+): Customer {
   const db = getDatabase();
   const cleanDoc = data.document_number.trim();
 
@@ -125,6 +129,12 @@ export function createCustomer(data: {
     );
   }
 
+  // Comprobar cuota si el restaurante está en modo TRIAL_DEMO
+  const quota = checkRestaurantQuota(restaurantId);
+  if (!quota.allowed && quota.isTrial) {
+    throw new Error(quota.reason || "Límite del modo de prueba alcanzado.");
+  }
+
   const cleanName = data.name.trim();
   const cleanPhone = data.phone ? data.phone.trim() : null;
   const cleanEmail = data.email ? data.email.trim() : null;
@@ -132,11 +142,11 @@ export function createCustomer(data: {
   const cleanFudoId = data.fudo_customer_id ? data.fudo_customer_id.trim() : null;
   const enrolledVal = data.loyalty_enrolled !== undefined ? (data.loyalty_enrolled ? 1 : 0) : 1;
 
-  const existing = findCustomerByDocument(cleanDoc);
+  const existing = findCustomerByDocument(cleanDoc, restaurantId);
   if (existing) {
     if (cleanFudoId && !existing.fudo_customer_id) {
       linkFudoCustomerId(existing.id, cleanFudoId);
-      return findCustomerById(existing.id)!;
+      return findCustomerById(existing.id, restaurantId)!;
     }
     return existing;
   }
@@ -144,8 +154,8 @@ export function createCustomer(data: {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  // Comprobar si corresponde otorgar puntos de bienvenida
-  const settings = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as {
+  // Comprobar si corresponde otorgar puntos de bienvenida para este restaurante
+  const settings = db.prepare("SELECT * FROM loyalty_settings WHERE restaurant_id = ? ORDER BY id ASC LIMIT 1").get(restaurantId) as {
     welcome_points_enabled: number;
     welcome_points_amount: number;
     points_lifetime_days: number;
@@ -161,9 +171,9 @@ export function createCustomer(data: {
   const newExpirationStr = welcomePts > 0 ? new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString() : null;
 
   db.prepare(`
-    INSERT INTO customers (id, fudo_customer_id, document_number, name, phone, email, birth_date, points_balance, total_spent, visit_count, points_expire_at, loyalty_enrolled, welcome_points_awarded, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
-  `).run(id, cleanFudoId, cleanDoc, cleanName, cleanPhone, cleanEmail, cleanBirthDate, welcomePts, newExpirationStr, enrolledVal, welcomeAwarded, now);
+    INSERT INTO customers (id, restaurant_id, fudo_customer_id, document_number, name, phone, email, birth_date, points_balance, total_spent, visit_count, points_expire_at, loyalty_enrolled, welcome_points_awarded, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
+  `).run(id, restaurantId, cleanFudoId, cleanDoc, cleanName, cleanPhone, cleanEmail, cleanBirthDate, welcomePts, newExpirationStr, enrolledVal, welcomeAwarded, now);
 
   if (welcomePts > 0) {
     const batchId = crypto.randomUUID();
@@ -171,29 +181,31 @@ export function createCustomer(data: {
     const batchExpiresAt = new Date(Date.now() + lifetimeDays * 24 * 60 * 60 * 1000).toISOString();
 
     db.prepare(`
-      INSERT INTO points_batches (id, customer_id, points_earned, points_remaining, expires_at, status, created_at)
-      VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?)
-    `).run(batchId, id, welcomePts, welcomePts, batchExpiresAt, now);
+      INSERT INTO points_batches (id, restaurant_id, customer_id, points_earned, points_remaining, expires_at, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+    `).run(batchId, restaurantId, id, welcomePts, welcomePts, batchExpiresAt, now);
 
     db.prepare(`
-      INSERT INTO points_history (id, customer_id, points, concept, created_at)
-      VALUES (?, ?, ?, '¡Bienvenido al programa de fidelidad! (Puntos de bienvenida)', ?)
-    `).run(historyId, id, welcomePts, now);
+      INSERT INTO points_history (id, restaurant_id, customer_id, points, concept, created_at)
+      VALUES (?, ?, ?, ?, '¡Bienvenido al programa de fidelidad! (Puntos de bienvenida)', ?)
+    `).run(historyId, restaurantId, id, welcomePts, now);
   }
 
-  return findCustomerById(id)!;
+  return findCustomerById(id, restaurantId)!;
 }
 
 export function updateCustomerLoyaltyEnrollment(
   customerId: string,
-  enrolled: boolean
+  enrolled: boolean,
+  restaurantId?: string
 ): { customer: Customer; welcomePointsAwarded: number } {
   const db = getDatabase();
-  const customer = findCustomerById(customerId);
+  const customer = findCustomerById(customerId, restaurantId);
   if (!customer) {
     throw new Error(`Cliente no encontrado: ${customerId}`);
   }
 
+  const effectiveRestoId = restaurantId || customer.restaurant_id || DEFAULT_RESTAURANT_ID;
   const enrolledVal = enrolled ? 1 : 0;
   let welcomePointsAwarded = 0;
 
@@ -203,7 +215,7 @@ export function updateCustomerLoyaltyEnrollment(
 
     // Si se activa y no ha recibido previamente puntos de bienvenida (no retroactivo por ventas)
     if (enrolled && !customer.welcome_points_awarded) {
-      const settings = db.prepare("SELECT * FROM loyalty_settings ORDER BY id ASC LIMIT 1").get() as {
+      const settings = db.prepare("SELECT * FROM loyalty_settings WHERE restaurant_id = ? ORDER BY id ASC LIMIT 1").get(effectiveRestoId) as {
         welcome_points_enabled: number;
         welcome_points_amount: number;
         points_lifetime_days: number;
@@ -223,14 +235,14 @@ export function updateCustomerLoyaltyEnrollment(
         const newExpirationStr = new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString();
 
         db.prepare(`
-          INSERT INTO points_batches (id, customer_id, points_earned, points_remaining, expires_at, status, created_at)
-          VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?)
-        `).run(batchId, customerId, welcomePointsAwarded, welcomePointsAwarded, batchExpiresAt, nowStr);
+          INSERT INTO points_batches (id, restaurant_id, customer_id, points_earned, points_remaining, expires_at, status, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+        `).run(batchId, effectiveRestoId, customerId, welcomePointsAwarded, welcomePointsAwarded, batchExpiresAt, nowStr);
 
         db.prepare(`
-          INSERT INTO points_history (id, customer_id, points, concept, created_at)
-          VALUES (?, ?, ?, '¡Bienvenido al programa de fidelidad! (Puntos de bienvenida)', ?)
-        `).run(historyId, customerId, welcomePointsAwarded, nowStr);
+          INSERT INTO points_history (id, restaurant_id, customer_id, points, concept, created_at)
+          VALUES (?, ?, ?, ?, '¡Bienvenido al programa de fidelidad! (Puntos de bienvenida)', ?)
+        `).run(historyId, effectiveRestoId, customerId, welcomePointsAwarded, nowStr);
 
         db.prepare(`
           UPDATE customers
@@ -247,7 +259,7 @@ export function updateCustomerLoyaltyEnrollment(
   }
 
   return {
-    customer: findCustomerById(customerId)!,
+    customer: findCustomerById(customerId, effectiveRestoId)!,
     welcomePointsAwarded,
   };
 }
@@ -299,92 +311,60 @@ export function checkBirthdayStatus(customer: Customer): BirthdayStatus {
     return {
       isEligible: false,
       daysDiff: 999,
-      message: "Formato de cumpleaños no válido",
+      message: "Formato de fecha inválido",
       alreadyClaimedThisYear: false,
     };
   }
 
   const now = new Date();
   const currentYear = now.getFullYear();
-
-  // Check if already claimed this year
   const alreadyClaimed = customer.last_birthday_reward_year === currentYear;
 
-  // Calculate birthday in current year
-  const thisYearBirthday = new Date(currentYear, parsed.month, parsed.day);
+  const bdayThisYear = new Date(currentYear, parsed.month, parsed.day);
+  const todayZero = new Date(currentYear, now.getMonth(), now.getDate());
+  const diffTime = bdayThisYear.getTime() - todayZero.getTime();
+  const daysDiff = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-  // Compare diff in days (ignoring time)
-  const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const bdayZero = new Date(thisYearBirthday.getFullYear(), thisYearBirthday.getMonth(), thisYearBirthday.getDate());
+  const isToday = daysDiff === 0;
+  const isBirthdayWeek = Math.abs(daysDiff) <= 3;
 
-  const diffMs = bdayZero.getTime() - todayZero.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-  // Eligible window: within ±3 days (e.g. -3 to +3)
-  const isInWindow = Math.abs(diffDays) <= 3;
-  const isEligible = isInWindow && !alreadyClaimed;
-
-  const displayDate = `${parsed.day} de ${MONTH_NAMES_ES[parsed.month]}`;
-  let message = "";
   if (alreadyClaimed) {
-    message = `Cortesía de cumpleaños ${currentYear} ya entregada.`;
-  } else if (diffDays === 0) {
-    message = "¡Hoy es su cumpleaños! 🎂 Postre de cortesía de la casa disponible.";
-  } else if (diffDays > 0 && diffDays <= 3) {
-    message = `Cumpleaños en ${diffDays} día(s) (${displayDate}). 🎂 Postre de cortesía de la casa habilitado por semana de agasajo.`;
-  } else if (diffDays < 0 && diffDays >= -3) {
-    message = `Cumplió hace ${Math.abs(diffDays)} día(s) (${displayDate}). 🎂 Postre de cortesía de la casa habilitado por semana de agasajo.`;
-  } else {
-    message = `Cumpleaños: ${displayDate}. Fuera de ventana de agasajo.`;
+    return {
+      isEligible: false,
+      daysDiff,
+      message: `Ya canjeó su cortesía anual de cumpleaños en ${currentYear}`,
+      alreadyClaimedThisYear: true,
+    };
   }
 
+  if (isToday) {
+    return {
+      isEligible: true,
+      daysDiff: 0,
+      message: "¡Hoy es su cumpleaños! Habilitado para canjear cortesía de postre",
+      alreadyClaimedThisYear: false,
+    };
+  }
+
+  if (isBirthdayWeek) {
+    const text =
+      daysDiff > 0
+        ? `Cumpleaños en ${daysDiff} días (${formatBirthdayDisplay(customer.birth_date)})`
+        : `Cumplió hace ${Math.abs(daysDiff)} días (${formatBirthdayDisplay(customer.birth_date)})`;
+    return {
+      isEligible: true,
+      daysDiff,
+      message: `¡Semana de cumpleaños! (${text}) - Habilitado para canjear cortesía`,
+      alreadyClaimedThisYear: false,
+    };
+  }
+
+  const daysLabel = daysDiff > 0 ? `Faltan ${daysDiff} días` : `Pasaron ${Math.abs(daysDiff)} días`;
   return {
-    isEligible,
-    daysDiff: diffDays,
-    message,
-    alreadyClaimedThisYear: alreadyClaimed,
-  };
-}
-
-export function getCustomerMetrics() {
-  const db = getDatabase();
-  const countRow = db.prepare("SELECT COUNT(*) as total_customers, SUM(points_balance) as total_points, SUM(total_spent) as total_revenue FROM customers").get() as {
-    total_customers: number;
-    total_points: number;
-    total_revenue: number;
-  };
-  const todaySales = db.prepare(`
-    SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as amount
-    FROM sales
-    WHERE date(sale_date) = date('now')
-  `).get() as { count: number; amount: number };
-
-  const todayPoints = db.prepare(`
-    SELECT COALESCE(SUM(points), 0) as points
-    FROM points_history
-    WHERE points > 0 AND date(created_at) = date('now')
-  `).get() as { points: number };
-
-  const todayRedemptions = db.prepare(`
-    SELECT COUNT(*) as count
-    FROM points_history
-    WHERE points < 0 AND concept LIKE 'Canje:%' AND date(created_at) = date('now')
-  `).get() as { count: number };
-
-  const todayBirthdays = db.prepare(`
-    SELECT COUNT(*) as count
-    FROM points_history
-    WHERE concept LIKE 'Cortesía de cumpleaños%' AND date(created_at) = date('now')
-  `).get() as { count: number };
-
-  return {
-    total_customers: countRow.total_customers || 0,
-    total_points: countRow.total_points || 0,
-    total_revenue: countRow.total_revenue || 0,
-    today_sales_count: todaySales.count || 0,
-    today_sales_amount: todaySales.amount || 0,
-    today_points_issued: todayPoints.points || 0,
-    today_redemptions_count: (todayRedemptions.count || 0) + (todayBirthdays.count || 0),
+    isEligible: false,
+    daysDiff,
+    message: `Cumpleaños: ${formatBirthdayDisplay(customer.birth_date)} (${daysLabel})`,
+    alreadyClaimedThisYear: false,
   };
 }
 
@@ -393,8 +373,8 @@ export function calculateCustomerTier(visitsCount: number): CustomerTier {
     return {
       name: "VIP Black",
       level: 4,
-      badge_color: "bg-slate-900 text-amber-300 border-amber-400/50 shadow-amber-500/20",
-      gradient_class: "from-slate-950 via-slate-900 to-amber-950 border-amber-500/50",
+      badge_color: "bg-purple-950/40 text-purple-300 border-purple-500/50",
+      gradient_class: "from-purple-950 via-slate-900 to-black border-purple-500/40",
       next_tier_name: null,
       visits_needed_for_next: 0,
       progress_percent: 100,
@@ -438,31 +418,43 @@ export function calculateCustomerTier(visitsCount: number): CustomerTier {
   }
 }
 
-export function getCustomerPortalData(identifier: string): CustomerPortalCard | null {
+export function getCustomerPortalData(
+  identifier: string,
+  restaurantId: string = DEFAULT_RESTAURANT_ID,
+  slug?: string
+): CustomerPortalCard | null {
   if (!identifier) return null;
 
   // Clean identifier in case it comes with QR prefix or spaces
   let clean = identifier.trim();
-  if (clean.startsWith("GASTRO:DNI:")) clean = clean.replace("GASTRO:DNI:", "").trim();
-  else if (clean.startsWith("GASTRO:CARD:")) clean = clean.replace("GASTRO:CARD:", "").trim();
-  else if (clean.startsWith("GASTRO:")) clean = clean.replace("GASTRO:", "").trim();
+  if (clean.startsWith("GASTRO:")) {
+    // If format is GASTRO:<slug>:DNI:<dni> or GASTRO:DNI:<dni>
+    const parts = clean.split(":");
+    if (parts.length >= 4 && parts[2] === "DNI") {
+      clean = parts[3].trim();
+    } else if (parts.length >= 3 && parts[1] === "DNI") {
+      clean = parts[2].trim();
+    } else {
+      clean = parts[parts.length - 1].trim();
+    }
+  }
 
-  // 1. Try finding by Document (DNI)
-  let customer = findCustomerByDocument(clean);
+  // 1. Try finding by Document (DNI) in this restaurant
+  let customer = findCustomerByDocument(clean, restaurantId);
 
   // 2. If not found and is UUID format, find by ID
   if (!customer && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)) {
-    customer = findCustomerById(clean);
+    customer = findCustomerById(clean, restaurantId);
   }
 
   // 3. If not found, try phone
   if (!customer && clean.replace(/[^0-9]/g, "").length >= 6) {
-    customer = findCustomerByPhone(clean);
+    customer = findCustomerByPhone(clean, restaurantId);
   }
 
-  // 4. Fallback search
+  // 4. Fallback search within this restaurant
   if (!customer) {
-    const matches = searchCustomers(clean, 2);
+    const matches = searchCustomers(clean, 2, "all", restaurantId);
     if (matches.length === 1) {
       customer = matches[0];
     }
@@ -504,8 +496,8 @@ export function getCustomerPortalData(identifier: string): CustomerPortalCard | 
     };
   }
 
-  // Rewards progress
-  const activeRewards = getActiveRewards();
+  // Rewards progress for this restaurant
+  const activeRewards = getActiveRewards(restaurantId);
   const rewards_progress: PortalRewardProgress[] = activeRewards.map((reward) => {
     if (reward.reward_type === "POINTS") {
       const is_redeemable = customer.points_balance >= reward.requirement_value;
@@ -543,11 +535,13 @@ export function getCustomerPortalData(identifier: string): CustomerPortalCard | 
   // Recent History (last 10)
   const recent_history = getCustomerPointsHistory(customer.id, 10);
 
-  // QR Payload: high compatibility string
-  const qr_payload = `GASTRO:DNI:${customer.document_number}`;
+  // QR Payload: high compatibility string scoped to restaurant
+  const qr_payload = slug
+    ? `GASTRO:${slug}:DNI:${customer.document_number}`
+    : `GASTRO:DNI:${customer.document_number}`;
 
-  // Active Promotions & Campaigns
-  const active_campaigns = getActiveCampaigns();
+  // Active Promotions & Campaigns for this restaurant
+  const active_campaigns = getActiveCampaigns(restaurantId);
 
   return {
     customer,

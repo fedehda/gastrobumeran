@@ -1,4 +1,4 @@
-import { getDatabase } from "./db";
+import { getDatabase, DEFAULT_RESTAURANT_ID } from "./db";
 import {
   LoyaltyCampaign,
   CreateCampaignInput,
@@ -16,6 +16,7 @@ function mapCampaignRow(row: Record<string, unknown>): LoyaltyCampaign {
 
   return {
     id: String(row.id),
+    restaurant_id: String(row.restaurant_id || DEFAULT_RESTAURANT_ID),
     name: String(row.name),
     description: row.description ? String(row.description) : null,
     multiplier: Number(row.multiplier ?? 1.0),
@@ -34,32 +35,38 @@ function mapCampaignRow(row: Record<string, unknown>): LoyaltyCampaign {
   };
 }
 
-export function getAllCampaigns(): LoyaltyCampaign[] {
+export function getAllCampaigns(restaurantId: string = DEFAULT_RESTAURANT_ID): LoyaltyCampaign[] {
   const db = getDatabase();
   const rows = db
-    .prepare("SELECT * FROM loyalty_campaigns ORDER BY priority DESC, created_at DESC")
-    .all() as Record<string, unknown>[];
+    .prepare("SELECT * FROM loyalty_campaigns WHERE restaurant_id = ? ORDER BY priority DESC, created_at DESC")
+    .all(restaurantId) as Record<string, unknown>[];
   return rows.map(mapCampaignRow);
 }
 
-export function getActiveCampaigns(): LoyaltyCampaign[] {
+export function getActiveCampaigns(restaurantId: string = DEFAULT_RESTAURANT_ID): LoyaltyCampaign[] {
   const db = getDatabase();
   const rows = db
-    .prepare("SELECT * FROM loyalty_campaigns WHERE is_active = 1 ORDER BY priority DESC, created_at DESC")
-    .all() as Record<string, unknown>[];
+    .prepare("SELECT * FROM loyalty_campaigns WHERE is_active = 1 AND restaurant_id = ? ORDER BY priority DESC, created_at DESC")
+    .all(restaurantId) as Record<string, unknown>[];
   return rows.map(mapCampaignRow);
 }
 
-export function getCampaignById(id: string): LoyaltyCampaign | null {
+export function getCampaignById(id: string, restaurantId?: string): LoyaltyCampaign | null {
   const db = getDatabase();
-  const row = db
-    .prepare("SELECT * FROM loyalty_campaigns WHERE id = ?")
-    .get(id) as Record<string, unknown> | undefined;
+  let row: Record<string, unknown> | undefined;
+  if (restaurantId) {
+    row = db.prepare("SELECT * FROM loyalty_campaigns WHERE id = ? AND restaurant_id = ?").get(id, restaurantId) as any;
+  } else {
+    row = db.prepare("SELECT * FROM loyalty_campaigns WHERE id = ?").get(id) as any;
+  }
   if (!row) return null;
   return mapCampaignRow(row);
 }
 
-export function createCampaign(input: CreateCampaignInput): LoyaltyCampaign {
+export function createCampaign(
+  input: CreateCampaignInput,
+  restaurantId: string = DEFAULT_RESTAURANT_ID
+): LoyaltyCampaign {
   const db = getDatabase();
   const id = `camp_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
@@ -67,14 +74,17 @@ export function createCampaign(input: CreateCampaignInput): LoyaltyCampaign {
     ? input.days_of_week.join(",")
     : "1,2,3,4,5,6,0";
 
+  const effectiveRestoId = input.restaurant_id || restaurantId;
+
   db.prepare(`
     INSERT INTO loyalty_campaigns (
-      id, name, description, multiplier, bonus_points,
+      id, restaurant_id, name, description, multiplier, bonus_points,
       days_of_week, start_time, end_time, start_date, end_date,
       min_spend, applicable_sectors, is_active, priority, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
+    effectiveRestoId,
     input.name.trim(),
     input.description?.trim() || null,
     input.multiplier !== undefined ? Number(input.multiplier) : 1.0,
@@ -92,12 +102,16 @@ export function createCampaign(input: CreateCampaignInput): LoyaltyCampaign {
     now
   );
 
-  return getCampaignById(id)!;
+  return getCampaignById(id, effectiveRestoId)!;
 }
 
-export function updateCampaign(id: string, input: Partial<CreateCampaignInput>): LoyaltyCampaign {
+export function updateCampaign(
+  id: string,
+  input: Partial<CreateCampaignInput>,
+  restaurantId?: string
+): LoyaltyCampaign {
   const db = getDatabase();
-  const current = getCampaignById(id);
+  const current = getCampaignById(id, restaurantId);
   if (!current) {
     throw new Error(`Campaña con ID ${id} no encontrada.`);
   }
@@ -144,30 +158,36 @@ export function updateCampaign(id: string, input: Partial<CreateCampaignInput>):
   return getCampaignById(id)!;
 }
 
-export function toggleCampaignActive(id: string, is_active?: boolean): LoyaltyCampaign {
-  const current = getCampaignById(id);
+export function toggleCampaignActive(id: string, is_active?: boolean, restaurantId?: string): LoyaltyCampaign {
+  const current = getCampaignById(id, restaurantId);
   if (!current) {
     throw new Error(`Campaña con ID ${id} no encontrada.`);
   }
   const nextState = is_active !== undefined ? is_active : !current.is_active;
-  return updateCampaign(id, { is_active: nextState });
+  return updateCampaign(id, { is_active: nextState }, restaurantId);
 }
 
-export function deleteCampaign(id: string): boolean {
+export function deleteCampaign(id: string, restaurantId?: string): boolean {
   const db = getDatabase();
-  const res = db.prepare("DELETE FROM loyalty_campaigns WHERE id = ?").run(id);
+  let res: { changes: number };
+  if (restaurantId) {
+    res = db.prepare("DELETE FROM loyalty_campaigns WHERE id = ? AND restaurant_id = ?").run(id, restaurantId);
+  } else {
+    res = db.prepare("DELETE FROM loyalty_campaigns WHERE id = ?").run(id);
+  }
   return res.changes > 0;
 }
 
 /**
- * Filtra las campañas activas que cumplen los criterios temporales, de importe y de sector
+ * Filtra las campañas activas que cumplen los criterios temporales, de importe y de sector para un restaurante
  */
 export function findApplicableCampaigns(
   date: Date,
   amount: number,
-  sector?: string
+  sector?: string,
+  restaurantId: string = DEFAULT_RESTAURANT_ID
 ): LoyaltyCampaign[] {
-  const activeCampaigns = getActiveCampaigns();
+  const activeCampaigns = getActiveCampaigns(restaurantId);
   if (activeCampaigns.length === 0) return [];
 
   // Local/Provided date components
@@ -241,9 +261,10 @@ export function evaluateBestCampaign(
   date: Date,
   amount: number,
   basePoints: number,
-  sector?: string
+  sector?: string,
+  restaurantId: string = DEFAULT_RESTAURANT_ID
 ): CampaignEvaluationResult | null {
-  const applicable = findApplicableCampaigns(date, amount, sector);
+  const applicable = findApplicableCampaigns(date, amount, sector, restaurantId);
   if (applicable.length === 0) return null;
 
   let bestResult: CampaignEvaluationResult | null = null;

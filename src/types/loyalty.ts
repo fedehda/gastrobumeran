@@ -2,8 +2,60 @@ export type SaleSource = "FUDO_API" | "CSV_IMPORT" | "MANUAL" | "SELF_CLAIM";
 export type RewardType = "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
 export type BatchStatus = "ACTIVE" | "DEPLETED" | "EXPIRED";
 
+export type RestaurantStatus = "ACTIVE" | "TRIAL_DEMO" | "SUSPENDED";
+
+export interface Restaurant {
+  id: string;
+  slug: string; // url-safe e.g. "demo", "la-guitarrita"
+  name: string;
+  legal_name?: string | null;
+  cuit?: string | null;
+  status: RestaurantStatus;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  accent_color?: string | null;
+  address?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  instagram?: string | null;
+  timezone: string; // e.g. "America/Argentina/Buenos_Aires"
+  trial_ends_at?: string | null;
+  max_customers?: number;
+  max_sales?: number;
+  is_listed?: boolean | number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactLead {
+  id: string;
+  name: string;
+  restaurant_name: string;
+  branch_count?: number;
+  pos_system?: string | null;
+  phone: string;
+  email: string;
+  message?: string | null;
+  status: "NEW" | "CONTACTED" | "DEMO_SCHEDULED" | "CONVERTED" | "DISCARDED";
+  created_at: string;
+}
+
+export interface CustomerOtpVerification {
+  id: string;
+  restaurant_id: string;
+  identifier: string; // DNI o teléfono
+  channel: "WHATSAPP" | "SMS";
+  otp_code: string;
+  attempts: number;
+  is_verified: boolean | number;
+  expires_at: string;
+  created_at: string;
+}
+
 export interface Customer {
   id: string;
+  restaurant_id?: string;
   fudo_customer_id?: string | null;
   document_number: string;
   phone?: string | null;
@@ -23,6 +75,7 @@ export interface Customer {
 
 export interface Sale {
   id: string;
+  restaurant_id?: string;
   external_sale_id?: string | null;
   customer_id?: string | null;
   source: SaleSource;
@@ -41,6 +94,7 @@ export interface Sale {
 
 export interface PointsBatch {
   id: string;
+  restaurant_id?: string;
   customer_id: string;
   sale_id?: string | null;
   points_earned: number;
@@ -52,6 +106,7 @@ export interface PointsBatch {
 
 export interface PointsHistory {
   id: string;
+  restaurant_id?: string;
   customer_id: string;
   sale_id?: string | null;
   points: number; // positive = earned, negative = redeemed/expired, 0 = birthday courtesy
@@ -62,6 +117,7 @@ export interface PointsHistory {
 
 export interface LoyaltySettings {
   id: number;
+  restaurant_id?: string;
   points_earning_rate: number; // e.g. 100 => 1 point per $100 spent
   points_expiration_days: number; // Timer 1: Inactivity rolling window (default 90 days)
   points_lifetime_days: number; // Timer 2: FIFO batch maximum lifetime (default 365 days)
@@ -78,6 +134,7 @@ export interface LoyaltySettings {
 
 export interface LoyaltyReward {
   id: number;
+  restaurant_id?: string;
   name: string;
   reward_type: RewardType;
   requirement_value: number; // e.g. 350 pts or Visit #5, 0 for birthday gift
@@ -90,6 +147,7 @@ export type CampaignSector = "ALL" | "TABLE" | "COUNTER" | "DELIVERY";
 
 export interface LoyaltyCampaign {
   id: string;
+  restaurant_id?: string;
   name: string;
   description?: string | null;
   multiplier: number; // e.g. 1.5, 2.0, 3.0
@@ -109,6 +167,7 @@ export interface LoyaltyCampaign {
 
 export interface CreateCampaignInput {
   name: string;
+  restaurant_id?: string;
   description?: string | null;
   multiplier?: number;
   bonus_points?: number;
@@ -132,6 +191,7 @@ export interface CampaignEvaluationResult {
 
 export interface CsvMappingPreset {
   id: number;
+  restaurant_id?: string | null;
   system_name: string;
   mapping_config: {
     document_number?: string;
@@ -147,6 +207,7 @@ export interface CsvMappingPreset {
 
 export interface FudoConfig {
   id: number;
+  restaurant_id?: string;
   api_key: string;
   api_secret: string;
   base_url: string;
@@ -244,6 +305,7 @@ export interface BirthdayStatus {
 
 export interface CronLog {
   id: number;
+  restaurant_id?: string | null;
   job_name: string;
   status: "SUCCESS" | "ERROR" | "WARNING";
   summary: string;
@@ -318,11 +380,16 @@ export interface BackofficeAnalytics {
   recentCrons: CronLog[];
 }
 
+export type AdminRole = "OWNER" | "ADMIN" | "CASHIER" | "SUPERVISOR" | "PLATFORM_ADMIN";
+
 export interface AdminUser {
   id: string;
+  restaurant_id?: string | null;
+  restaurant_name?: string | null;
+  restaurant_slug?: string | null;
   name: string;
   email: string;
-  role: "ADMIN" | "CASHIER" | "SUPERVISOR";
+  role: AdminRole;
   created_at: string;
 }
 

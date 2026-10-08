@@ -3,6 +3,7 @@ import { normalizeAmount, normalizeDocument, parseSaleDate, CsvFieldMapping, Csv
 import { processSale } from "@/lib/loyalty/engine";
 import { findCustomerByDocument } from "@/lib/db/customer-repo";
 import { isLegalEntityCuit } from "@/lib/validation/cuit";
+import { DEFAULT_RESTAURANT_ID } from "@/lib/db/restaurant-repo";
 import crypto from "crypto";
 
 export interface ProcessCsvBatchOptions {
@@ -10,6 +11,7 @@ export interface ProcessCsvBatchOptions {
   mapping: CsvFieldMapping;
   delimiter?: string;
   presetName?: string;
+  restaurantId?: string;
 }
 
 export function processCsvBatch({
@@ -17,6 +19,7 @@ export function processCsvBatch({
   mapping,
   delimiter,
   presetName,
+  restaurantId = DEFAULT_RESTAURANT_ID,
 }: ProcessCsvBatchOptions): CsvBatchProcessSummary {
   // Parse full CSV
   const parsed = Papa.parse<Record<string, string>>(csvContent, {
@@ -96,7 +99,7 @@ export function processCsvBatch({
     const effectiveName = name || `Cliente DNI ${doc}`;
 
     // Check if customer is new before processing
-    const existingCust = findCustomerByDocument(doc);
+    const existingCust = findCustomerByDocument(doc, restaurantId);
     if (!existingCust) {
       newCustomersCount++;
     }
@@ -114,6 +117,7 @@ export function processCsvBatch({
         externalSaleId,
         concept: conceptText,
         importBatchId: batchId,
+        restaurantId,
       });
 
       if (saleResult.message?.includes("Idempotencia")) {

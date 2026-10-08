@@ -1,4 +1,4 @@
-import { getDatabase } from "./db";
+import { getDatabase, DEFAULT_RESTAURANT_ID } from "./db";
 import { getLoyaltySettings } from "./settings-repo";
 import { getCronLogs } from "./cron-repo";
 import {
@@ -15,9 +15,12 @@ import {
   RfmSegmentationReport,
 } from "@/types/loyalty";
 
-export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all"): BackofficeAnalytics {
+export function getBackofficeAnalytics(
+  timeRange?: "7d" | "30d" | "90d" | "all",
+  restaurantId: string = DEFAULT_RESTAURANT_ID
+): BackofficeAnalytics {
   const db = getDatabase();
-  const settings = getLoyaltySettings();
+  const settings = getLoyaltySettings(restaurantId);
 
   // Time filter condition for time-sensitive aggregates
   let dateFilter = "";
@@ -37,7 +40,8 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
       COALESCE(SUM(CASE WHEN visit_count >= 2 THEN 1 ELSE 0 END), 0) as recurring_customers,
       COALESCE(SUM(CASE WHEN datetime(last_visit_at) >= datetime('now', '-90 days') THEN 1 ELSE 0 END), 0) as active_90d_customers
     FROM customers
-  `).get() as {
+    WHERE restaurant_id = ?
+  `).get(restaurantId) as {
     total_customers: number;
     total_active_points: number;
     recurring_customers: number;
@@ -49,8 +53,8 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
       COUNT(*) as total_sales,
       COALESCE(SUM(total_amount), 0) as total_revenue
     FROM sales
-    WHERE status = 'CLOSED' ${dateFilter}
-  `).get() as { total_sales: number; total_revenue: number };
+    WHERE restaurant_id = ? AND status = 'CLOSED' ${dateFilter}
+  `).get(restaurantId) as { total_sales: number; total_revenue: number };
 
   const pointsStats = db.prepare(`
     SELECT
@@ -58,7 +62,8 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
       COALESCE(ABS(SUM(CASE WHEN points < 0 AND concept LIKE 'Canje:%' THEN points ELSE 0 END)), 0) as total_redeemed,
       COALESCE(ABS(SUM(CASE WHEN points < 0 AND (concept LIKE '%Caducidad%' OR concept LIKE '%Inactividad%' OR concept LIKE '%Lote%') THEN points ELSE 0 END)), 0) as total_expired
     FROM points_history
-  `).get() as { total_issued: number; total_redeemed: number; total_expired: number };
+    WHERE restaurant_id = ?
+  `).get(restaurantId) as { total_issued: number; total_redeemed: number; total_expired: number };
 
   const totalCustomers = customerStats.total_customers;
   const recurringCustomers = customerStats.recurring_customers;
@@ -79,9 +84,9 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
       COUNT(*) as sales_count,
       COALESCE(SUM(total_amount), 0) as total_revenue
     FROM sales
-    WHERE status = 'CLOSED' ${dateFilter}
+    WHERE restaurant_id = ? AND status = 'CLOSED' ${dateFilter}
     GROUP BY source
-  `).all() as Array<{ source: string; sales_count: number; total_revenue: number }>;
+  `).all(restaurantId) as Array<{ source: string; sales_count: number; total_revenue: number }>;
 
   const totalFilteredRevenue = salesStats.total_revenue || 1;
   const channelLabels: Record<string, string> = {
@@ -111,15 +116,16 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
     };
   });
 
-  // 3. Cohort Distribution
-  const rawCohorts = db.prepare(`
+  // 3. Cohort Distribution (Frequency Pyramid)
+  const cohortRows = db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN visit_count = 1 THEN 1 ELSE 0 END), 0) as new_count,
-      COALESCE(SUM(CASE WHEN visit_count >= 2 AND visit_count <= 4 THEN 1 ELSE 0 END), 0) as occasional_count,
-      COALESCE(SUM(CASE WHEN visit_count >= 5 AND visit_count <= 9 THEN 1 ELSE 0 END), 0) as frequent_count,
-      COALESCE(SUM(CASE WHEN visit_count >= 10 THEN 1 ELSE 0 END), 0) as vip_count
+      SUM(CASE WHEN visit_count = 1 THEN 1 ELSE 0 END) as new_count,
+      SUM(CASE WHEN visit_count >= 2 AND visit_count <= 4 THEN 1 ELSE 0 END) as occasional_count,
+      SUM(CASE WHEN visit_count >= 5 AND visit_count <= 9 THEN 1 ELSE 0 END) as frequent_count,
+      SUM(CASE WHEN visit_count >= 10 THEN 1 ELSE 0 END) as vip_count
     FROM customers
-  `).get() as {
+    WHERE restaurant_id = ?
+  `).get(restaurantId) as {
     new_count: number;
     occasional_count: number;
     frequent_count: number;
@@ -127,33 +133,25 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
   };
 
   const cohorts: CohortDistribution = {
-    newCount: rawCohorts.new_count,
-    occasionalCount: rawCohorts.occasional_count,
-    frequentCount: rawCohorts.frequent_count,
-    vipCount: rawCohorts.vip_count,
+    newCount: cohortRows.new_count || 0,
+    occasionalCount: cohortRows.occasional_count || 0,
+    frequentCount: cohortRows.frequent_count || 0,
+    vipCount: cohortRows.vip_count || 0,
     totalCustomers,
     retentionRatePercent,
   };
 
-  // 4. Top 10 Most Valuable Customers
+  // 4. Top 10 Valuable Customers
   const topCustomers = db.prepare(`
-    SELECT
-      id,
-      name,
-      document_number,
-      phone,
-      total_spent,
-      visit_count,
-      points_balance,
-      last_visit_at,
-      points_expire_at
+    SELECT id, name, document_number, phone, total_spent, visit_count, points_balance, last_visit_at, points_expire_at
     FROM customers
+    WHERE restaurant_id = ?
     ORDER BY total_spent DESC, visit_count DESC
     LIMIT 10
-  `).all() as CustomerValueRank[];
+  `).all(restaurantId) as CustomerValueRank[];
 
-  // 5. Ranking of Rewards
-  const rawRewards = db.prepare(`
+  // 5. Top 5 Redeemed Rewards
+  const topRewardsRaw = db.prepare(`
     SELECT
       r.id,
       r.name,
@@ -161,67 +159,62 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
       COUNT(ph.id) as redemption_count,
       COALESCE(ABS(SUM(ph.points)), 0) as total_points_spent
     FROM loyalty_rewards r
-    LEFT JOIN points_history ph ON ph.concept LIKE 'Canje: ' || r.name || '%'
+    LEFT JOIN points_history ph ON ph.concept LIKE 'Canje% ' || r.name || '%' AND ph.restaurant_id = r.restaurant_id
+    WHERE r.restaurant_id = ?
     GROUP BY r.id, r.name, r.reward_type
     ORDER BY redemption_count DESC, total_points_spent DESC
-  `).all() as Array<{
+    LIMIT 5
+  `).all(restaurantId) as Array<{
     id: number;
     name: string;
-    reward_type: string;
+    reward_type: "POINTS" | "VISIT_MILESTONE" | "BIRTHDAY_GIFT";
     redemption_count: number;
     total_points_spent: number;
   }>;
 
-  const topRewards: RewardPopularity[] = rawRewards.map((r) => ({
-    id: r.id,
-    name: r.name,
-    reward_type: r.reward_type as RewardPopularity["reward_type"],
-    redemptionCount: r.redemption_count,
-    totalPointsSpent: r.total_points_spent,
+  const topRewards: RewardPopularity[] = topRewardsRaw.map((tr) => ({
+    id: tr.id,
+    name: tr.name,
+    reward_type: tr.reward_type,
+    redemptionCount: tr.redemption_count,
+    totalPointsSpent: tr.total_points_spent,
   }));
 
-  // 6. Churn Risk & Day 75 Anti-Inflation Alerts
-  const risk15Days = db.prepare(`
-    SELECT
-      COUNT(*) as count,
-      COALESCE(SUM(points_balance), 0) as points
+  // 6. Churn Risk & Day 75 Alerts (Inactivity expiration in 15 or 30 days)
+  const expiring15 = db.prepare(`
+    SELECT COUNT(*) as count, COALESCE(SUM(points_balance), 0) as points
     FROM customers
-    WHERE points_balance > 0
+    WHERE restaurant_id = ?
+      AND points_balance > 0
+      AND points_expire_at IS NOT NULL
       AND datetime(points_expire_at) >= datetime('now')
       AND datetime(points_expire_at) <= datetime('now', '+15 days')
-  `).get() as { count: number; points: number };
+  `).get(restaurantId) as { count: number; points: number };
 
-  const risk30Days = db.prepare(`
-    SELECT
-      COUNT(*) as count,
-      COALESCE(SUM(points_balance), 0) as points
+  const expiring30 = db.prepare(`
+    SELECT COUNT(*) as count, COALESCE(SUM(points_balance), 0) as points
     FROM customers
-    WHERE points_balance > 0
+    WHERE restaurant_id = ?
+      AND points_balance > 0
+      AND points_expire_at IS NOT NULL
       AND datetime(points_expire_at) >= datetime('now')
       AND datetime(points_expire_at) <= datetime('now', '+30 days')
-  `).get() as { count: number; points: number };
+  `).get(restaurantId) as { count: number; points: number };
 
   const atRiskCustomers = db.prepare(`
-    SELECT
-      id,
-      name,
-      document_number,
-      phone,
-      total_spent,
-      visit_count,
-      points_balance,
-      last_visit_at,
-      points_expire_at
+    SELECT id, name, document_number, phone, total_spent, visit_count, points_balance, last_visit_at, points_expire_at
     FROM customers
-    WHERE points_balance > 0
+    WHERE restaurant_id = ?
+      AND points_balance > 0
+      AND points_expire_at IS NOT NULL
       AND datetime(points_expire_at) >= datetime('now')
-      AND datetime(points_expire_at) <= datetime('now', '+15 days')
-    ORDER BY points_balance DESC
+      AND datetime(points_expire_at) <= datetime('now', '+30 days')
+    ORDER BY points_expire_at ASC
     LIMIT 10
-  `).all() as CustomerValueRank[];
+  `).all(restaurantId) as CustomerValueRank[];
 
-  // 7. Recent Crons
-  const recentCrons = getCronLogs(10);
+  // 7. Recent Cron Logs for this restaurant
+  const recentCrons = getCronLogs(10, restaurantId);
 
   return {
     kpis: {
@@ -242,110 +235,96 @@ export function getBackofficeAnalytics(timeRange?: "7d" | "30d" | "90d" | "all")
     topCustomers,
     topRewards,
     churnRisk: {
-      expiring15DaysCount: risk15Days.count,
-      expiring15DaysPoints: risk15Days.points,
-      expiring30DaysCount: risk30Days.count,
-      expiring30DaysPoints: risk30Days.points,
+      expiring15DaysCount: expiring15.count,
+      expiring15DaysPoints: expiring15.points,
+      expiring30DaysCount: expiring30.count,
+      expiring30DaysPoints: expiring30.points,
       atRiskCustomers,
     },
     recentCrons,
   };
 }
 
-export function getRfmSegmentationReport(cmvPercentage = 32): RfmSegmentationReport {
+export function getRfmSegmentation(
+  restaurantId: string = DEFAULT_RESTAURANT_ID,
+  cmvPercentage = 32
+): RfmSegmentationReport {
   const db = getDatabase();
   const now = new Date();
 
-  // 1. Fetch all customers
-  const customersRows = db.prepare(`
-    SELECT
-      id,
-      name,
-      document_number,
-      phone,
-      email,
-      points_balance,
-      total_spent,
-      visit_count,
-      last_visit_at,
-      created_at
+  // 1. Fetch all customers for this restaurant
+  const customers = db.prepare(`
+    SELECT id, name, document_number, phone, email, total_spent, visit_count, points_balance, last_visit_at
     FROM customers
-    ORDER BY total_spent DESC, visit_count DESC
-  `).all() as Array<{
+    WHERE restaurant_id = ?
+    ORDER BY total_spent DESC
+  `).all(restaurantId) as Array<{
     id: string;
     name: string;
     document_number: string;
     phone: string | null;
     email: string | null;
-    points_balance: number;
     total_spent: number;
     visit_count: number;
+    points_balance: number;
     last_visit_at: string | null;
-    created_at: string;
   }>;
 
-  const totalAnalyzed = customersRows.length;
-  const rfmCustomers: RfmCustomer[] = [];
+  const totalAnalyzed = customers.length;
+  let totalActivePoints = 0;
 
-  const quadrantCounts: Record<RfmQuadrant, {
-    count: number;
-    revenue: number;
-    points: number;
-  }> = {
+  const quadrantCounts: Record<RfmQuadrant, { count: number; revenue: number; points: number }> = {
     CHAMPIONS: { count: 0, revenue: 0, points: 0 },
     PROMISING: { count: 0, revenue: 0, points: 0 },
     AT_RISK: { count: 0, revenue: 0, points: 0 },
     DORMANT: { count: 0, revenue: 0, points: 0 },
   };
 
-  let totalActivePoints = 0;
+  const rfmCustomers: RfmCustomer[] = [];
 
-  for (const c of customersRows) {
-    const points = c.points_balance || 0;
-    const frequency = c.visit_count || 0;
+  for (const c of customers) {
     const monetary = c.total_spent || 0;
+    const frequency = c.visit_count || 0;
+    const points = c.points_balance || 0;
     totalActivePoints += points;
 
-    // Compute recency in days
     let recencyDays = 999;
     if (c.last_visit_at) {
       const visitDate = new Date(c.last_visit_at);
-      recencyDays = Math.max(0, Math.floor((now.getTime() - visitDate.getTime()) / (1000 * 60 * 60 * 24)));
-    } else if (c.created_at) {
-      const createdDate = new Date(c.created_at);
-      recencyDays = Math.max(0, Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const diffMs = now.getTime() - visitDate.getTime();
+      recencyDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
     }
 
     let quadrant: RfmQuadrant = "DORMANT";
     let quadrantLabel = "Dormidos";
-    let badgeColor = "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40";
-    let recommendation = "Inactivos (+90 días). Enviar promo de reactivación agresiva (2x1 o invitación especial).";
-    let whatsappMessage = `¡Hola ${c.name}! 🔁 Hace tiempo no te vemos por GastroBumeran. Te extrañamos: presentá este mensaje esta semana y disfrutá de una consumición de cortesía.`;
+    let badgeColor = "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40";
+    let recommendation = "Campaña de reactivación agresiva (2x1, copa de bienvenida) o depuración de base.";
+    let whatsappMessage = `¡Hola ${c.name}! Hace tiempo que no te vemos por nuestro salón. Te invitamos con un 2x1 en tu próxima visita. ¡Te esperamos!`;
 
     if (recencyDays <= 45 && frequency >= 4) {
       quadrant = "CHAMPIONS";
       quadrantLabel = "Champions (VIPs)";
-      badgeColor = "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40";
-      recommendation = "Clientes más leales y rentables. Fidelizar con atención preferencial y degustaciones sorpresa sin desgastar con promociones de descuento.";
-      whatsappMessage = `¡Hola ${c.name}! 🌟 Como uno de nuestros comensales más destacados en GastroBumeran, tenés ${points} puntos acumulados para canjear cuando quieras. ¡Te esperamos pronto!`;
-    } else if (recencyDays <= 45) {
+      badgeColor = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40";
+      recommendation = "Cuidado VIP, degustaciones de cocina, acceso prioritario y eventos exclusivos.";
+      whatsappMessage = `¡Hola ${c.name}! Gracias por ser uno de nuestros comensales más queridos. En tu próxima visita pedí una degustación especial de la casa de cortesía.`;
+    } else if (recencyDays <= 45 && frequency < 4) {
       quadrant = "PROMISING";
       quadrantLabel = "Prometedores";
-      badgeColor = "bg-sky-500/10 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40";
-      recommendation = "Visitaron recientemente con frecuencia en crecimiento. Incentivar una visita más para convertirlos en Champions.";
-      whatsappMessage = `¡Hola ${c.name}! 🍔 Te esperamos nuevamente en GastroBumeran para seguir sumando sellos de visita y acumular puntos en tu tarjeta digital.`;
-    } else if (recencyDays <= 90 && (frequency >= 2 || monetary >= 5000)) {
+      badgeColor = "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40";
+      recommendation = "Doble puntaje en próxima visita, gamificación de sellos y encuestas post-consumo.";
+      whatsappMessage = `¡Hola ${c.name}! Nos encanta tenerte con nosotros. Esta semana tenés doble puntaje en todos tus consumos de salón. ¡Aprovechalo!`;
+    } else if (recencyDays > 45 && recencyDays <= 90) {
       quadrant = "AT_RISK";
       quadrantLabel = "En Riesgo (Rescate)";
-      badgeColor = "bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40";
-      recommendation = "Eran comensales habituales pero no vienen hace 45-90 días. Sus puntos están cerca de la caducidad. Enviar rescate de WhatsApp.";
-      whatsappMessage = `¡Hola ${c.name}! ⏰ Notamos que hace unos días no nos visitás. Te recordamos que tenés ${points} puntos activos en tu cuenta y nos encantaría recibirte antes de que caduquen.`;
+      badgeColor = "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40";
+      recommendation = "Alerta de Día 75 pre-vencimiento por WhatsApp y propuesta gastronómica atractiva.";
+      whatsappMessage = `¡Hola ${c.name}! Tenés ${points} puntos acumulados que están próximos a vencer si no registrás una visita. ¡Vení a disfrutarlos antes de que expiren!`;
     } else {
       quadrant = "DORMANT";
       quadrantLabel = "Dormidos";
-      badgeColor = "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40";
-      recommendation = "Inactivos (+90 días o 1 sola visita lejana). Lanzar campaña de reactivación agresiva.";
-      whatsappMessage = `¡Hola ${c.name}! 🔁 Hace tiempo no te vemos por GastroBumeran. Volvé esta semana y te agasajamos con un beneficio especial de bienvenida.`;
+      badgeColor = "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40";
+      recommendation = "Campaña de reactivación agresiva (2x1, copa de bienvenida) o depuración de base.";
+      whatsappMessage = `¡Hola ${c.name}! Te extrañamos en el restaurante. Si venís este mes te invitamos un postre o trago de cortesía. ¡Esperamos verte pronto!`;
     }
 
     quadrantCounts[quadrant].count++;
@@ -424,12 +403,13 @@ export function getRfmSegmentationReport(cmvPercentage = 32): RfmSegmentationRep
     },
   };
 
-  // 3. Compute Floating Points Liability (Pasivo Contable Flotante)
+  // 3. Compute Floating Points Liability (Pasivo Contable Flotante) for this restaurant
   const pointsStats = db.prepare(`
     SELECT
       COALESCE(ABS(SUM(CASE WHEN points < 0 AND (concept LIKE '%Caducidad%' OR concept LIKE '%Inactividad%' OR concept LIKE '%Lote%') THEN points ELSE 0 END)), 0) as total_expired
     FROM points_history
-  `).get() as { total_expired: number };
+    WHERE restaurant_id = ?
+  `).get(restaurantId) as { total_expired: number };
 
   const catalogValuePerPoint = 10;
   const nominalValueArs = totalActivePoints * catalogValuePerPoint;
@@ -508,4 +488,3 @@ export function generateRfmCsv(customers: RfmCustomer[]): string {
 
   return bom + [headers.join(";"), ...rows].join("\r\n");
 }
-
