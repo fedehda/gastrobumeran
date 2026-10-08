@@ -296,6 +296,7 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interac
 
 ## 🗺️ Roadmap Evolutivo (Próximos Sprints)
 
+### ✅ Módulos Implementados
 - [x] **Sprint 1:** Motor Híbrido, Doble Timer Anti-Inflación, FIFO, Cumpleaños y POS.
 - [x] **Sprint 2:** Importador Universal de CSV con Wizard y Presets (Maxirest, Tango).
 - [x] **Sprint 3:** Integración con API Pública de Fudo POS (RF-01), Adaptadores Desacoplados (POS Translator) y Daemon Listener en Tiempo Real.
@@ -303,13 +304,26 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interac
 - [x] **Sprint 5:** Módulo de Autenticación de Administrador (Login con contraseña/PIN con teclado físico y roles) & Gestor de Catálogo de Premios y Canjes (CRUD interactivo desde el Backoffice).
 - [x] **Sprint Futuro A:** Portal Web del Cliente (Tarjeta Digital PWA sin login y QR dinámico).
 - [x] **Sprint Futuro A2:** Módulo de Anulación de Ventas & Rollback Atómico de Puntos y Visitas (Manual y Sincronizado).
+- [x] **Sprint Futuro F:** Motor de Campañas Dinámicas (Multiplicadores Días Valle, Happy Hour, Desglose en POS y PWA).
+- [x] **Sprint Futuro H:** Inteligencia de Clientes (Segmentación RFM Automática) & Pasivo Contable de Puntos.
+
+### 🚀 Prioridad Inmediata — Arquitectura Multi-Restaurante (SaaS) & Landing Pública
+> *Ejecución secuencial recomendada (K → L → M → N → O → P) para asentar las fundaciones multi-tenant antes de sumar nuevos módulos operativos.*
+
+- [ ] **Sprint Futuro K:** Fundaciones Multi-Tenant & Aislamiento de Datos por Restaurante (Modelo de Datos, Aislamiento de Comensales y Preparación para PostgreSQL).
+- [ ] **Sprint Futuro L:** Seguridad, Sesión y Panel por Restaurante (RBAC, Terminal PIN por Local y Blindaje de APIs).
+- [ ] **Sprint Futuro M:** Registro y Onboarding de Restaurantes (Verificación de Email, Modo Prueba Demo y Wizard de Configuración).
+- [ ] **Sprint Futuro N:** Integraciones POS y Procesos en Segundo Plano por Restaurante (Fudo, Webhooks y Crons Aislados).
+- [ ] **Sprint Futuro O:** Portal del Cliente por Local & Verificación OTP (Tarjeta Independiente por Restaurante, Validación WhatsApp/SMS y PWA con Marca Propia).
+- [ ] **Sprint Futuro P:** Landing Page Pública, Planes & Precios y Accesos Centralizados (Showcase Comercial, Formulario Extensible a Email y Accesos para Admins y Clientes).
+- [ ] **Sprint Futuro Q:** Consola de Plataforma & Super-Admin (Gestión Global de Restaurantes, Leads y Auditoría).
+
+### 🔮 Extensiones Funcionales (Post-SaaS)
 - [ ] **Sprint Futuro B:** Auto-Acreditación por Escaneo de Tickets Fiscales (Lector web HTML5 de QR fiscal AFIP/ARCA).
 - [ ] **Sprint Futuro C:** Notificaciones automáticas por WhatsApp Business API (Bienvenida, Día 75, Saludo Cumpleaños, Hitos).
 - [ ] **Sprint Futuro D:** Pases Nativos para Google Wallet y Apple Wallet (`.pkpass`).
 - [ ] **Sprint Futuro E:** Operación Rápida de Salón para Mozos & Resiliencia Offline.
-- [x] **Sprint Futuro F:** Motor de Campañas Dinámicas (Multiplicadores Días Valle, Happy Hour, Desglose en POS y PWA).
-- [ ] **Sprint Futuro G:** Programa de Referidos ("Traé a un Amigo" & Recompensas Cruzadas).
-- [x] **Sprint Futuro H:** Inteligencia de Clientes (Segmentación RFM Automática) & Pasivo Contable de Puntos.
+- [ ] **Sprint Futuro G:** Programa de Referidos ("Traé a un Amigo" & Recompensas Cruzadas por Local).
 - [ ] **Sprint Futuro I:** Encuestas de Satisfacción Express (NPS Post-Consumo) & Reputación en Google Maps.
 - [ ] **Sprint Futuro J:** Seguridad Operativa, Auditoría de Cajas y Detección Antifraude.
 
@@ -385,4 +399,132 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interac
   * **Límites Operativos por Rol:** Restricción de canjes o acreditaciones manuales máximas que un usuario con rol "Cajero" puede emitir por turno sin autorización de un "Encargado/Admin".
   * **Detector de Anomalías:** Alertas de transacciones sospechosas (ej. mismo DNI sumando consumos en dos cajas simultáneamente, o carga repetitiva de tickets de montos idénticos en lapsos menores a 10 minutos).
   * **Log Inmutable de Auditoría:** Registro de IP, agente de usuario y usuario autenticado en cada movimiento manual de `points_history`.
+
+---
+
+### Sprint Futuro K: Fundaciones Multi-Tenant & Aislamiento de Datos por Restaurante (Preparación para PostgreSQL)
+* **Objetivo:** Introducir la entidad `Restaurant` / local gastronómico como unidad raíz de particionamiento de datos, aislando comensales, ventas, configuración y saldos por restaurante, manteniendo compatibilidad inmediata con SQLite y garantizando migración directa a PostgreSQL.
+* **Entregables:**
+  * **Entidad `restaurants` y Aislamiento Estricto:**
+    * Tabla `restaurants`: `id` (UUID), `slug` (VARCHAR unique, apto para URLs y futuro subdominio), `name`, `legal_name`, `cuit`, `status` (`ACTIVE`, `TRIAL_DEMO`, `SUSPENDED`), `logo_url`, `primary_color`, `accent_color`, `address`, `city`, `phone`, `whatsapp`, `instagram`, `timezone` (default `America/Argentina/Buenos_Aires`), `created_at`.
+    * Inclusión de columna `restaurant_id` en todas las tablas de negocio: `customers`, `sales`, `points_batches`, `points_history`, `loyalty_settings`, `loyalty_rewards`, `loyalty_campaigns`, `fudo_config`, `cron_logs`, `admin_users`, `csv_mapping_presets`.
+  * **Comensales Independientes por Restaurante (Sin Fidelización Cruzada):**
+    * Un mismo DNI/CUIT puede existir en múltiples restaurantes con perfiles, puntos, visitas, historial de transacciones y aniversarios de cumpleaños 100% aislados.
+    * Reconstrucción segura de tablas en SQLite: sustitución de restricciones globales (`document_number UNIQUE`, `external_sale_id UNIQUE`, `fudo_customer_id UNIQUE`) por claves compuestas `UNIQUE(restaurant_id, document_number)`, `UNIQUE(restaurant_id, external_sale_id)`, `UNIQUE(restaurant_id, fudo_customer_id)`.
+  * **Arquitectura de Repositorios Tenant-Aware:**
+    * Todas las funciones de base de datos (`customer-repo`, `campaign-repo`, `settings-repo`, `analytics-repo`, `loyalty/engine`) exigen `restaurantId` como parámetro mandatorio estricto sin fallbacks globales.
+  * **Migración Cero-Downtime de Datos Existentes:**
+    * Creación automática del restaurante semilla `demo` ("GastroBumeran Demo Resto", slug: `demo`) asignándole todos los datos preexistentes.
+    * Script automatizado de aprovisionamiento de nuevo restaurante (`provisionRestaurant(restaurantId)`) con presets de premios, settings anti-inflación y campañas por defecto.
+  * **Preparación para Migración Futura a PostgreSQL:**
+    * DDL compatible en `schema.sql` y tests de paridad de tipos para habilitar el traspaso a PostgreSQL sin rediseño estructural.
+  * **Suite de Pruebas:** `src/scripts/test-multitenancy.ts` validando independencia de saldos para el mismo DNI en dos locales, aislamiento de ventas y FIFO sin fugas de datos entre tenants.
+
+### Sprint Futuro L: Seguridad, Sesión y Panel por Restaurante (RBAC & Terminal PIN por Local)
+* **Objetivo:** Blindar la plataforma asegurando que cada operador y administrador acceda únicamente a la información de su restaurante, cerrando el acceso a APIs sin sesión y aislando los códigos PIN por local.
+* **Entregables:**
+  * **Blindaje Integral de APIs (`requireSession` Middleware):**
+    * Helper centralizado de autorización que valida JWT y asocia `restaurant_id` verificado desde la cookie segura `gastrobumeran_session` a cada llamada de `/api/*`. Ningún endpoint administrativo aceptará `restaurant_id` por body/query para evitar spoofing o fuga de datos.
+  * **Autenticación con Roles por Restaurante (RBAC):**
+    * Roles por local: `OWNER` (dueño, acceso total), `ADMIN` (gerente), `SUPERVISOR` (encargado de turno) y `CASHIER` (cajero de salón).
+    * Rol transversal de plataforma: `PLATFORM_ADMIN` (para soporte global de GastroBumeran).
+  * **Terminal PIN Aislado por Local (`/r/[slug]/caja`):**
+    * Resolución de PIN numérico de 4 dígitos circunscripta al restaurante activo, eliminando colisiones entre distintos locales.
+    * Modo "Terminal de Salón" con cookie de dispositivo de terminal fija.
+  * **Mudanza del Panel Operativo y Backoffice:**
+    * Migración de la vista operativa actual `/` hacia la ruta `/admin` (con branding y selector de contexto de local).
+    * `proxy.ts` (Next.js 16) para redirección automática y control de acceso.
+  * **Aislamiento en Streaming y Tiempo Real:**
+    * Canales Server-Sent Events (SSE) y bus de eventos `PosEventBus` particionados por `restaurant_id` (notificaciones de ventas y anulaciones solo al local correspondiente).
+
+### Sprint Futuro M: Registro y Onboarding de Restaurantes (Email Verification & Modo Prueba Demo)
+* **Objetivo:** Permitir el auto-registro de nuevos locales gastronómicos con validación de identidad por correo y habilitación en modo de prueba/demo limitado.
+* **Entregables:**
+  * **Pantalla de Registro Público (`/registro`):**
+    * Formulario de alta para restaurantes: Nombre del local, razón social, CUIT del comercio, rubro gastronómico (cafetería, cervecería, parrilla, pizzería, sushi, etc.), teléfono/WhatsApp, ciudad y credenciales del usuario propietario (`OWNER`).
+    * Generador inteligente de `slug` con verificación de disponibilidad en tiempo real (ej. `la-parrilla-del-parque`).
+  * **Verificación de Email Transaccional:**
+    * Generación de tokens criptográficos de un solo uso con ventana de expiración (24 hs).
+    * Flujo de verificación de email: pantalla de ingreso de código o enlace de confirmación (`/verificar-email?token=...`).
+  * **Régimen de Modo de Prueba Demo (`TRIAL_DEMO`):**
+    * Los locales inician en estado `TRIAL_DEMO` tras verificar su correo.
+    * Gating de funcionalidades: hasta 50 comensales registrados, hasta 100 ventas sincronizadas y banner informativo en el backoffice indicando entorno de prueba. Funciones avanzadas (exportación masiva RFM y sincronización continua en vivo) sujetas a activación.
+  * **Wizard de Onboarding en 4 Pasos (`/admin/onboarding`):**
+    1. *Identidad:* Carga de logo, color primario y previsualización de tarjeta digital.
+    2. *Reglas de Negocio:* Tasa de puntos ($ por punto), umbral de visita y puntos de bienvenida.
+    3. *Catálogo Inicial:* Selección de catálogo sugerido por rubro gastronómico con 1 clic.
+    4. *Kit de Puesta en Marcha:* Descarga inmediata del QR del local en PDF/PNG para imprimir en cartas y mesas.
+  * **Diseño Arquitectónico Abierto a Subdominios:**
+    * Middleware y capa de routing estructurados con resolución agnóstica (`resolveRestaurantContext(req)`) que soporte tanto `/r/[slug]` en fase actual como `[slug].gastrobumeran.com` en fase posterior sin reescribir controladores.
+
+### Sprint Futuro N: Integraciones POS y Procesos en Segundo Plano por Restaurante
+* **Objetivo:** Desacoplar las integraciones POS (Fudo API, Webhooks, CSV) y los motores de background (scheduler y crons) para operar concurrentemente por local.
+* **Entregables:**
+  * **Credenciales POS por Restaurante con Cifrado en Reposo:**
+    * Cada restaurante gestiona sus propias credenciales (`fudo_config`: `api_key`, `api_secret`, URLs) encriptadas con AES-256-GCM.
+    * Conector sandbox independiente por restaurante.
+  * **Scheduler y Crons Multi-Tenant:**
+    * Scheduler en segundo plano que itera sobre los restaurantes en estado `ACTIVE` o `TRIAL_DEMO`.
+    * Bloqueo concurrente por local (para que la latencia de sincronización de un restaurante no afecte al resto).
+    * Auditoría nocturna de caducidad (90d / 365d) y recálculo de cuadrantes RFM evaluados con la zona horaria (`timezone`) de cada restaurante.
+  * **Recepción de Webhooks Dinámicos:**
+    * Endpoints versionados con token de autenticación del restaurante: `/api/pos/webhook/[provider]/[restaurantToken]`.
+  * **Importador Universal CSV Acotado:**
+    * Procesamiento de lotes CSV vinculado estrictamente al `restaurant_id` activo, con presets públicos compartidos y presets privados del local.
+  * **Bitácora `cron_logs` con Alcance de Local:**
+    * Visualización transparente del historial de ejecuciones dentro del backoffice de cada restaurante.
+
+### Sprint Futuro O: Portal del Cliente por Local & Verificación OTP (Tarjeta Independiente con WhatsApp/SMS)
+* **Objetivo:** Ofrecer una tarjeta digital PWA completamente personalizada por local gastronómico, protegiendo los datos del comensal mediante verificación OTP por WhatsApp o SMS y garantizando que las tarjetas de diferentes locales coexistan en el teléfono sin interferencias.
+* **Entregables:**
+  * **Portal de Marca Propia (`/r/[slug]`):**
+    * Acceso directo a la tarjeta digital del restaurante con su logo, colores y catálogo exclusivo.
+    * Manifest PWA dinámico (`/r/[slug]/manifest.webmanifest`) que permite instalar la aplicación en el móvil con el nombre e ícono del restaurante ("Mi Tarjeta - La Guitarrita").
+    * Aislamiento en el navegador: almacenamiento en `localStorage` con clave segmentada `gastrobumeran_card_[slug]` (un comensal puede tener instalada la tarjeta de varios restaurantes en su mismo celular sin colisiones).
+  * **Verificación OTP de Seguridad (WhatsApp / SMS):**
+    * Requisito de autenticación sin contraseña: el comensal ingresa su DNI/teléfono y recibe un código OTP temporal de 6 dígitos vía WhatsApp o SMS antes de desplegar saldos y permitir canjes.
+    * Prevención de accesos de terceros y cumplimiento de normativas de privacidad (Ley 25.326).
+  * **Códigos QR de Escaneo con Prefijo de Local:**
+    * Formato de QR dinámico: `GASTRO:[slug]:DNI:[dni]`.
+    * El buscador de la Caja POS valida que el código escaneado pertenezca a su propio restaurante, mostrando alerta clara si un comensal intenta presentar un QR de otro comercio.
+  * **Catálogo de Premios y Campañas Filtradas:**
+    * El comensal solo visualiza las recompensas, promociones de días valle (Happy Hour) y beneficios de cumpleaños pertenecientes al local actual.
+
+### Sprint Futuro P: Landing Page Pública, Planes & Precios y Accesos Centralizados
+* **Objetivo:** Publicar una landing page moderna, institucional y comercial en `/` que promocione GastroBumeran, explique el funcionamiento del sistema, exponga la propuesta de planes comerciales, canalice consultas de contacto y centralice los accesos para comensales y administradores.
+* **Entregables:**
+  * **Página Principal de Alto Impacto (`/`):**
+    * *Hero Section:* Propuesta de valor clara ("La plataforma inteligente de fidelización gastronómica: multiplicá la recurrencia de tus comensales sin ceder tus márgenes"). Botones de acción principales: **"Registrá tu Restaurante"** (lleva a `/registro`) y **"Ver Demo en Vivo"**.
+    * *Pilares del Sistema:* Explicación visual del Motor Híbrido (Puntos + Sellos), el Doble Timer Anti-Inflacionario (90d / 365d con consumo FIFO), el Módulo de Cumpleaños, las Campañas de Días Valle y la Inteligencia RFM.
+    * *Showcase de Integraciones:* Compatibilidad con Fudo POS, Maxirest, Tango y formatos CSV universales.
+    * *Cómo Funciona:* Paso a paso interactivo para restaurantes (Configurá en 5 minutos, sincronizá tus ventas, fidelizá en automático) y para comensales (Sin apps pesadas: tarjeta web PWA con QR).
+    * *Soporte Light / Dark Mode:* Integración nativa con el `ThemeContext` preexistente.
+  * **Sección de Planes y Estructura de Precios:**
+    * Comparativa de planes:
+      * *Plan Starter Demo:* Prueba sin costo hasta 50 clientes y 100 tickets, funciones esenciales de POS y tarjeta PWA.
+      * *Plan Pro Gastronómico:* Clientes y ventas ilimitadas, sincronización automática Fudo API en tiempo real, motor de campañas dinámicas y auditoría anti-inflación.
+      * *Plan Cadena / Multi-Sucursal:* Múltiples locales independientes, analítica comparativa de red, soporte prioritario y adaptadores a medida.
+    * Llamados a la acción directos: "Empezar Prueba Gratis" y "Consultar por Plan Cadena" (orientado a captar interesados sin cobrar pasarela automatizada por el momento).
+  * **Canalización de Accesos en Encabezado:**
+    * Botón **"Ingresar (Restaurantes)"**: Dirige a `/ingresar` (login de dueños y administradores para acceder a su backoffice `/admin`).
+    * Botón **"Soy Cliente"**: Despliega un modal visual interactivo explicando que no se requiere registro en la web central y guiando al comensal a **escanear el código QR del local** impreso en su ticket o mesa para acceder a su tarjeta digital PWA `/r/[slug]`.
+  * **Formulario de Contacto y Captación de Leads:**
+    * Formulario comercial: Nombre, Nombre del Restaurante, Cantidad de Sucursales, Sistema POS en uso, Teléfono/WhatsApp, Correo y Consulta.
+    * Almacenamiento en tabla `contact_leads` con protección anti-spam (honeypot + rate limit).
+    * **Arquitectura Extensible para Avisos por Email:** Módulo desacoplado de despacho de eventos (`onNewLeadCreated`) listo para conectar un proveedor de correo (Resend, SendGrid, Amazon SES o SMTP) en una fase posterior.
+    * Enlace directo a WhatsApp comercial para atención inmediata.
+  * **SEO, Metadatos y Legales:**
+    * Open Graph tags, Twitter cards, `sitemap.ts`, `robots.ts` y páginas de cumplimiento legal (`/terminos` y `/privacidad`).
+
+### Sprint Futuro Q: Consola de Plataforma & Super-Admin (Gestión Global de Locales y Leads)
+* **Objetivo:** Dotar al equipo interno de GastroBumeran de una herramienta centralizada para monitorear el crecimiento del SaaS, gestionar el ciclo de vida de los restaurantes y atender leads.
+* **Entregables:**
+  * **Panel de Control de Plataforma (`/plataforma`):**
+    * Acceso exclusivo para usuarios con rol `PLATFORM_ADMIN`.
+    * Directorio global de restaurantes con estado (`TRIAL_DEMO`, `ACTIVE`, `SUSPENDED`), métricas de adopción (comensales dados de alta, volumen de tickets fidelizados) y acciones de aprobación/suspensión.
+  * **Bandeja de Entrada de Leads:**
+    * Visualización y seguimiento de las consultas ingresadas en la landing page con estados de gestión (*Nuevo*, *En Contacto*, *Demostración Realizada*, *Convertido*).
+  * **Impersonación Segura para Soporte:**
+    * Capacidad auditada para que el equipo de soporte acceda temporalmente a la vista administrativa de un local para brindar asistencia técnica, con log inmutable de auditoría.
+
 
