@@ -204,6 +204,44 @@ function initDatabase(db: DatabaseSync) {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS restaurants (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      legal_name TEXT,
+      cuit TEXT,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      logo_url TEXT,
+      primary_color TEXT DEFAULT '#f59e0b',
+      secondary_color TEXT DEFAULT '#1e293b',
+      accent_color TEXT DEFAULT '#3b82f6',
+      currency_symbol TEXT DEFAULT '$',
+      stamp_icon TEXT DEFAULT '🍔',
+      card_slogan TEXT DEFAULT 'Club de Fidelización',
+      address TEXT,
+      city TEXT,
+      phone TEXT,
+      whatsapp TEXT,
+      instagram TEXT,
+      timezone TEXT DEFAULT 'America/Argentina/Buenos_Aires',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS customer_otp_verifications (
+      id TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL DEFAULT 'resto-local-default',
+      identifier TEXT NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'WHATSAPP',
+      otp_code TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      is_verified INTEGER NOT NULL DEFAULT 0,
+      expires_at TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_restaurants_slug ON restaurants(slug);
+    CREATE INDEX IF NOT EXISTS idx_otp_lookup ON customer_otp_verifications(restaurant_id, identifier);
     CREATE INDEX IF NOT EXISTS idx_sales_external_id ON sales(external_sale_id);
     CREATE INDEX IF NOT EXISTS idx_customers_fudo_id ON customers(fudo_customer_id);
     CREATE INDEX IF NOT EXISTS idx_cron_logs_job ON cron_logs(job_name);
@@ -214,6 +252,22 @@ function initDatabase(db: DatabaseSync) {
   `);
 
   // Safe migrations for pre-existing tables
+  safeAddColumn(db, "restaurants", "stamp_icon TEXT DEFAULT '🍔'");
+  safeAddColumn(db, "restaurants", "card_slogan TEXT DEFAULT 'Club de Fidelización'");
+  safeAddColumn(db, "restaurants", "secondary_color TEXT DEFAULT '#1e293b'");
+  safeAddColumn(db, "restaurants", "currency_symbol TEXT DEFAULT '$'");
+  safeAddColumn(db, "customers", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "sales", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "points_batches", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "points_history", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "loyalty_settings", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "loyalty_rewards", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "loyalty_campaigns", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "fudo_config", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "cron_logs", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "admin_users", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+  safeAddColumn(db, "csv_mapping_presets", "restaurant_id TEXT DEFAULT 'resto-local-default'");
+
   safeAddColumn(db, "customers", "birth_date TEXT");
   safeAddColumn(db, "customers", "last_birthday_reward_year INTEGER");
   safeAddColumn(db, "customers", "fudo_customer_id TEXT");
@@ -221,6 +275,8 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "customers", "welcome_points_awarded INTEGER NOT NULL DEFAULT 0");
   try {
     db.exec("CREATE INDEX IF NOT EXISTS idx_customers_enrolled ON customers(loyalty_enrolled);");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_customers_restaurant ON customers(restaurant_id);");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_sales_restaurant ON sales(restaurant_id);");
   } catch {
     // Safe to ignore if already created concurrently
   }
@@ -238,6 +294,38 @@ function initDatabase(db: DatabaseSync) {
   safeAddColumn(db, "sales", "campaign_multiplier REAL NOT NULL DEFAULT 1.0");
   safeAddColumn(db, "sales", "campaign_bonus_points INTEGER NOT NULL DEFAULT 0");
   safeAddColumn(db, "points_history", "campaign_id TEXT");
+
+  // Seed default local restaurant if none exists
+  const restoCount = (db.prepare("SELECT COUNT(*) as count FROM restaurants").get() as { count: number }).count;
+  if (restoCount === 0) {
+    db.prepare(`
+      INSERT INTO restaurants (
+        id, slug, name, legal_name, cuit, status, logo_url,
+        primary_color, secondary_color, accent_color, currency_symbol,
+        stamp_icon, card_slogan, phone, whatsapp, instagram, address, city
+      ) VALUES (
+        'resto-local-default', 'mi-resto', 'GastroBumeran Restó', 'GastroBumeran S.A.', '20-12345678-9', 'ACTIVE', '',
+        '#f59e0b', '#1e293b', '#3b82f6', '$',
+        '🍔', 'Club de Fidelización Gastronómica',
+        '+54 11 4444-5555', '+5491144445555', '@gastrobumeran', 'Av. Corrientes 1234', 'Buenos Aires'
+      )
+    `).run();
+  }
+
+  // Backfill restaurant_id for complete Cloud-SaaS migration readiness
+  db.exec(`
+    UPDATE customers SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE sales SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE points_batches SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE points_history SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE loyalty_settings SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE loyalty_rewards SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE loyalty_campaigns SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE fudo_config SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE cron_logs SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE admin_users SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+    UPDATE csv_mapping_presets SET restaurant_id = 'resto-local-default' WHERE restaurant_id IS NULL;
+  `);
 
   // Safe cleanup: Des-enrolar cualquier cliente cargado previamente con CUIT de persona jurídica (empresa)
   db.prepare(`

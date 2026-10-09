@@ -19,11 +19,13 @@ import {
   FileSpreadsheet,
   Brain,
   RotateCcw,
+  Palette,
 } from "lucide-react";
 import { BackofficeAnalytics } from "@/types/loyalty";
 import { RewardsManager } from "@/components/rewards/RewardsManager";
 import { RfmIntelligenceView } from "./RfmIntelligenceView";
 import { TestEnvironmentManager } from "./TestEnvironmentManager";
+import { CardBrandingManager } from "@/components/branding/CardBrandingManager";
 
 interface BackofficeDashboardProps {
   onOpenFudoModal?: () => void;
@@ -33,7 +35,7 @@ interface BackofficeDashboardProps {
 export function BackofficeDashboard({ onOpenFudoModal, onDataPurged }: BackofficeDashboardProps = {}) {
   const [analytics, setAnalytics] = useState<BackofficeAnalytics | null>(null);
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
-  const [activeTab, setActiveTab] = useState<"analytics" | "rewards" | "rfm" | "maintenance">("analytics");
+  const [activeTab, setActiveTab] = useState<"analytics" | "rewards" | "rfm" | "branding" | "maintenance">("analytics");
   const [isLoading, setIsLoading] = useState(true);
   const [isExecutingCron, setIsExecutingCron] = useState(false);
   const [cronFeedback, setCronFeedback] = useState<string | null>(null);
@@ -239,6 +241,19 @@ export function BackofficeDashboard({ onOpenFudoModal, onDataPurged }: Backoffic
 
         <button
           type="button"
+          onClick={() => setActiveTab("branding")}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "branding"
+              ? "bg-bumeran-600 text-white shadow-glow"
+              : "text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 dark:text-gray-400 dark:hover:text-white dark:bg-dark-900 dark:border-dark-800"
+          }`}
+        >
+          <Palette className="w-3.5 h-3.5 text-bumeran-400" />
+          <span>Personalización de Tarjeta & Marca</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab("maintenance")}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === "maintenance"
@@ -259,6 +274,8 @@ export function BackofficeDashboard({ onOpenFudoModal, onDataPurged }: Backoffic
             if (onDataPurged) onDataPurged();
           }}
         />
+      ) : activeTab === "branding" ? (
+        <CardBrandingManager />
       ) : activeTab === "rfm" ? (
         <RfmIntelligenceView />
       ) : activeTab === "rewards" ? (

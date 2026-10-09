@@ -8,15 +8,18 @@ import {
   CheckCircle2,
   AlertCircle,
   Wifi,
+  Globe,
+  MessageCircle,
 } from "lucide-react";
-import { CustomerPortalCard } from "@/types/loyalty";
+import { CustomerPortalCard, RestaurantBranding } from "@/types/loyalty";
 
 interface LoyaltyCardVisualProps {
   cardData: CustomerPortalCard;
+  branding?: RestaurantBranding;
   onOpenQr: () => void;
 }
 
-export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps) {
+export function LoyaltyCardVisual({ cardData, branding, onOpenQr }: LoyaltyCardVisualProps) {
   const {
     customer,
     tier,
@@ -25,6 +28,14 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
     is_expiring_soon,
     next_expiring_batch,
   } = cardData;
+
+  const brand = branding || cardData.restaurant;
+  const restaurantName = brand?.name || "GastroBumeran";
+  const cardSlogan = brand?.card_slogan || "Club de Fidelización";
+  const primaryColor = brand?.primary_color || "#f59e0b";
+  const accentColor = brand?.accent_color || "#3b82f6";
+  const stampIcon = brand?.stamp_icon || "🍔";
+  const logoUrl = brand?.logo_url;
 
   // Mask DNI for aesthetic display e.g. 30.***.456
   const formatMaskedDoc = (doc: string) => {
@@ -37,7 +48,10 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
 
   // Stamp card for frequency (up to 5 or 10 stamps)
   const maxStamps = tier.level >= 3 ? 10 : 5;
-  const currentStamps = Math.min(maxStamps, customer.visit_count % maxStamps || (customer.visit_count > 0 ? maxStamps : 0));
+  const currentStamps = Math.min(
+    maxStamps,
+    customer.visit_count % maxStamps || (customer.visit_count > 0 ? maxStamps : 0)
+  );
 
   return (
     <div className="w-full space-y-4">
@@ -53,7 +67,8 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
                 ¡Semana de tu Cumpleaños!
               </h4>
               <p className="text-xs text-pink-900/80 dark:text-pink-300/80">
-                Tenés habilitado un <strong>Postre de la Casa de cortesía</strong>. Mostrá tu tarjeta al mozo o en caja para disfrutarlo.
+                Tenés habilitado un <strong>Postre de la Casa de cortesía</strong> en{" "}
+                <strong>{restaurantName}</strong>. Mostrá tu tarjeta al mozo o en caja para disfrutarlo.
               </p>
             </div>
           </div>
@@ -65,8 +80,12 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
         <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-500/40 p-3.5 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-xs shadow-sm dark:shadow-none">
           <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
           <div className="flex-1">
-            <span className="font-semibold text-amber-800 dark:text-amber-300">¡Alerta Anti-Inflación!</span>{" "}
-            Tus {customer.points_balance} puntos vencerán en <strong>{days_until_inactivity_expiry} día(s)</strong> por inactividad. Cualquier consumo nuevo resetea el reloj a 90 días.
+            <span className="font-semibold text-amber-800 dark:text-amber-300">
+              ¡Alerta Anti-Inflación!
+            </span>{" "}
+            Tus {customer.points_balance} puntos vencerán en{" "}
+            <strong>{days_until_inactivity_expiry} día(s)</strong> por inactividad. Cualquier consumo nuevo en{" "}
+            {restaurantName} resetea el reloj a 90 días.
           </div>
         </div>
       )}
@@ -74,28 +93,57 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
       {/* VIP Digital Membership Card (Credit Card Shape) */}
       <div
         className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${tier.gradient_class} border p-6 text-white shadow-2xl transition-all duration-300 hover:scale-[1.01]`}
+        style={{
+          boxShadow: `0 20px 40px -15px ${primaryColor}25`,
+        }}
       >
-        {/* Subtle Background Pattern & Glow */}
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Subtle Background Pattern & Glow using Custom Primary / Accent Colors */}
+        <div
+          className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-30"
+          style={{ backgroundColor: primaryColor }}
+        />
+        <div
+          className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-20"
+          style={{ backgroundColor: accentColor }}
+        />
 
-        {/* Card Header */}
+        {/* Card Header: Branded Logo & Name */}
         <div className="flex items-start justify-between relative z-10 mb-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-dark-950 font-black shadow-md shadow-amber-500/30">
-              <span className="text-lg">🔁</span>
-            </div>
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={restaurantName}
+                className="w-11 h-11 rounded-2xl object-contain bg-white/10 p-1 border border-white/20 shadow-md backdrop-blur-sm"
+              />
+            ) : (
+              <div
+                className="w-11 h-11 rounded-2xl flex items-center justify-center text-dark-950 font-black shadow-md"
+                style={{
+                  background: `linear-gradient(135deg, ${primaryColor}, #ffffff 180%)`,
+                }}
+              >
+                <span className="text-xl">🔁</span>
+              </div>
+            )}
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold tracking-tight text-white">
-                  GastroBumeran
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-base font-extrabold tracking-tight text-white drop-shadow-sm">
+                  {restaurantName}
                 </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase tracking-wider">
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border backdrop-blur-sm"
+                  style={{
+                    backgroundColor: `${primaryColor}25`,
+                    color: primaryColor,
+                    borderColor: `${primaryColor}50`,
+                  }}
+                >
                   Club
                 </span>
               </div>
-              <span className="text-[10px] text-gray-400 tracking-wider uppercase block">
-                Fidelización Gastronómica
+              <span className="text-[10px] text-gray-300 tracking-wider uppercase block font-medium">
+                {cardSlogan}
               </span>
             </div>
           </div>
@@ -139,13 +187,19 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               Puntos Disponibles
             </span>
-            <div className="text-4xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400">
+            <div
+              className="text-4xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text"
+              style={{
+                backgroundImage: `linear-gradient(to right, #ffffff, ${primaryColor}, #ffffff)`,
+              }}
+            >
               {customer.points_balance.toLocaleString("es-AR")}
             </div>
             <p className="text-xs text-gray-300 flex items-center gap-1.5 pt-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               <span>
-                <strong>{customer.visit_count}</strong> {customer.visit_count === 1 ? "visita acumulada" : "visitas acumuladas"}
+                <strong>{customer.visit_count}</strong>{" "}
+                {customer.visit_count === 1 ? "visita acumulada" : "visitas acumuladas"}
               </span>
             </p>
           </div>
@@ -154,7 +208,10 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
           <div className="col-span-4 flex flex-col items-center justify-center">
             <button
               onClick={onOpenQr}
-              className="group relative p-2.5 rounded-2xl bg-white/95 text-dark-950 hover:bg-white shadow-xl hover:shadow-amber-500/20 hover:scale-105 transition active:scale-95 border-2 border-amber-400 flex flex-col items-center gap-1 cursor-pointer"
+              className="group relative p-2.5 rounded-2xl bg-white/95 text-dark-950 hover:bg-white shadow-xl hover:scale-105 transition active:scale-95 border-2 flex flex-col items-center gap-1 cursor-pointer"
+              style={{
+                borderColor: primaryColor,
+              }}
               title="Agrandar código QR para escanear"
             >
               <QrCode className="w-10 h-10 text-dark-950 group-hover:scale-110 transition" />
@@ -165,15 +222,17 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
           </div>
         </div>
 
-        {/* Stamp Cards Visualization */}
+        {/* Custom Stamp Cards Visualization (Using Custom Stamp Icon) */}
         <div className="mt-5 pt-4 border-t border-white/10 relative z-10">
           <div className="flex items-center justify-between text-[11px] text-gray-300 mb-2">
             <span className="font-semibold flex items-center gap-1">
               <span>🎯 Sellos por Visitas</span>
-              <span className="text-gray-400">({currentStamps}/{maxStamps})</span>
+              <span className="text-gray-400">
+                ({currentStamps}/{maxStamps})
+              </span>
             </span>
             {tier.next_tier_name && (
-              <span className="text-amber-300 font-medium text-[10px]">
+              <span className="font-medium text-[10px]" style={{ color: primaryColor }}>
                 {tier.visits_needed_for_next} para {tier.next_tier_name}
               </span>
             )}
@@ -186,11 +245,20 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
                   key={idx}
                   className={`h-9 rounded-xl flex items-center justify-center border text-xs font-bold transition-all ${
                     isStamped
-                      ? "bg-amber-400/20 border-amber-400 text-amber-300 shadow-sm shadow-amber-500/20"
+                      ? "shadow-sm"
                       : "bg-black/30 border-white/10 text-gray-500"
                   }`}
+                  style={
+                    isStamped
+                      ? {
+                          backgroundColor: `${primaryColor}30`,
+                          borderColor: primaryColor,
+                          color: primaryColor,
+                        }
+                      : {}
+                  }
                 >
-                  {isStamped ? "🍔" : idx + 1}
+                  {isStamped ? stampIcon : idx + 1}
                 </div>
               );
             })}
@@ -208,21 +276,46 @@ export function LoyaltyCardVisual({ cardData, onOpenQr }: LoyaltyCardVisualProps
             </span>
           </div>
 
-          {/* Timers info */}
-          <div className="text-right space-y-0.5">
-            {days_until_inactivity_expiry !== null && (
-              <div className="flex items-center justify-end gap-1 text-gray-300">
-                <Clock className="w-3 h-3 text-amber-400" />
-                <span>
-                  Vigencia: <strong>{days_until_inactivity_expiry}d</strong>
-                </span>
-              </div>
+          {/* Contact Links & Timers info */}
+          <div className="flex items-center gap-3">
+            {brand?.whatsapp && (
+              <a
+                href={`https://wa.me/${brand.whatsapp.replace(/[^0-9]/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-400 hover:text-emerald-300 transition"
+                title="WhatsApp del local"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </a>
             )}
-            {next_expiring_batch && (
-              <div className="text-[10px] text-gray-400">
-                Lote {next_expiring_batch.points} pts vence en {next_expiring_batch.days_left}d
-              </div>
+            {brand?.instagram && (
+              <a
+                href={`https://instagram.com/${brand.instagram.replace("@", "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-pink-400 hover:text-pink-300 transition"
+                title="Instagram del local"
+              >
+                <Globe className="w-4 h-4" />
+              </a>
             )}
+
+            <div className="text-right space-y-0.5">
+              {days_until_inactivity_expiry !== null && (
+                <div className="flex items-center justify-end gap-1 text-gray-300">
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  <span>
+                    Vigencia: <strong>{days_until_inactivity_expiry}d</strong>
+                  </span>
+                </div>
+              )}
+              {next_expiring_batch && (
+                <div className="text-[10px] text-gray-400">
+                  Lote {next_expiring_batch.points} pts vence en {next_expiring_batch.days_left}d
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

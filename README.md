@@ -286,11 +286,18 @@ npx tsx src/scripts/test-rfm.ts
 
 # Ejecutar pruebas del Motor de Campañas Dinámicas y Días Valle (Sprint F)
 npx tsx src/scripts/test-campaigns.ts
+
+# Ejecutar pruebas de Personalización de Tarjeta (Sprint O) y Preparación Cloud-SaaS
+npx tsx src/scripts/test-sprint-o-local.ts
+
+# Exportar base de datos SQLite para migración directa a Cloud-SaaS
+npx tsx src/scripts/export-to-cloud-saas.ts
 ```
 
 Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interactuar con la plataforma:
 - **Punto de Venta & Backoffice:** `http://localhost:3000` (Credenciales Admin Demo: `admin@gastrobumeran.com` / `admin123` o PIN rápido `1234`).
-- **Portal Web del Cliente (PWA):** `http://localhost:3000/portal` (o prueba con `http://localhost:3000/portal?dni=30123456`).
+- **Pestaña de Marca y Tarjeta:** Pestaña *"Personalización de Tarjeta & Marca"* dentro del Backoffice para customizar logo, colores y sellos en tiempo real con Live Preview.
+- **Portal Web del Cliente (PWA):** `http://localhost:3000/portal` o acceso por local en `http://localhost:3000/r/mi-resto`.
 
 ---
 
@@ -306,6 +313,7 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador para interac
 - [x] **Sprint Futuro A2:** Módulo de Anulación de Ventas & Rollback Atómico de Puntos y Visitas (Manual y Sincronizado).
 - [x] **Sprint Futuro F:** Motor de Campañas Dinámicas (Multiplicadores Días Valle, Happy Hour, Desglose en POS y PWA).
 - [x] **Sprint Futuro H:** Inteligencia de Clientes (Segmentación RFM Automática) & Pasivo Contable de Puntos.
+- [x] **Sprint Futuro O (Local-Offline):** Personalización de Tarjeta del Cliente & Marca (Live Preview de Logo, Colores Primarios, Sellos temáticos y QR con slug `/r/[slug]`) y Preparación de Migración Cloud-SaaS en SQLite.
 
 ### 🚀 Prioridad Inmediata — Arquitectura Multi-Restaurante (SaaS) & Landing Pública
 > *Ejecución secuencial recomendada (K → L → M → N → O → P) para asentar las fundaciones multi-tenant antes de sumar nuevos módulos operativos.*

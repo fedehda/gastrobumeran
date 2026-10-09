@@ -15,6 +15,7 @@ export interface Customer {
   total_spent: number;
   visit_count: number;
   last_visit_at?: string | null;
+  restaurant_id?: string;
   points_expire_at?: string | null; // Timer 1: Inactivity (90 days)
   loyalty_enrolled?: boolean | number; // 1 = participating, 0 = not enrolled / ignored in points
   welcome_points_awarded?: boolean | number; // 1 = already received welcome bonus, 0 = not yet
@@ -365,6 +366,7 @@ export interface CustomerPortalCard {
   recent_history: PointsHistory[];
   qr_payload: string;
   active_campaigns?: LoyaltyCampaign[];
+  restaurant?: RestaurantBranding;
 }
 
 export type RfmQuadrant = "CHAMPIONS" | "PROMISING" | "AT_RISK" | "DORMANT";
@@ -418,3 +420,92 @@ export interface RfmSegmentationReport {
   customers: RfmCustomer[];
   liability: FloatingPointsLiability;
 }
+
+// ==========================================
+// SPRINT O: RESTAURANT BRANDING & CLOUD SAAS PREPARATION
+// ==========================================
+
+export interface Restaurant {
+  id: string;
+  slug: string; // url-safe e.g. "mi-resto", "la-guitarrita"
+  name: string;
+  legal_name?: string | null;
+  cuit?: string | null;
+  status: "ACTIVE" | "TRIAL_DEMO" | "SUSPENDED";
+  logo_url?: string | null;
+  primary_color: string; // hex code e.g. "#f59e0b"
+  secondary_color?: string | null; // hex code e.g. "#1e293b"
+  accent_color?: string | null; // hex code e.g. "#3b82f6"
+  currency_symbol?: string; // e.g. "$"
+  stamp_icon: string; // emoji e.g. "🍔", "🍕", "🍺", "☕", "⭐"
+  card_slogan: string; // e.g. "Club de Fidelización"
+  address?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  instagram?: string | null;
+  timezone: string; // e.g. "America/Argentina/Buenos_Aires"
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RestaurantBranding {
+  id: string;
+  slug: string;
+  name: string;
+  legal_name?: string | null;
+  cuit?: string | null;
+  logo_url?: string | null;
+  primary_color: string;
+  secondary_color?: string | null;
+  accent_color?: string | null;
+  currency_symbol?: string;
+  stamp_icon: string;
+  card_slogan: string;
+  address?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  instagram?: string | null;
+}
+
+export interface CustomerOtpVerification {
+  id: string;
+  restaurant_id: string;
+  identifier: string;
+  channel: "WHATSAPP" | "SMS";
+  otp_code: string;
+  attempts: number;
+  is_verified: boolean | number;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface ExportMigrationBundle {
+  metadata: {
+    export_version: string;
+    exported_at: string;
+    system: string;
+    source_branch: string;
+    sqlite_db_name: string;
+  };
+  restaurant: Restaurant;
+  loyalty_settings: LoyaltySettings;
+  loyalty_rewards: LoyaltyReward[];
+  loyalty_campaigns: LoyaltyCampaign[];
+  fudo_config: FudoConfig;
+  csv_presets: CsvMappingPreset[];
+  customers: Customer[];
+  sales: Sale[];
+  points_batches: PointsBatch[];
+  points_history: PointsHistory[];
+  stats: {
+    total_customers: number;
+    total_sales: number;
+    total_batches: number;
+    total_history_entries: number;
+    total_points_issued: number;
+    total_active_points: number;
+  };
+}
+

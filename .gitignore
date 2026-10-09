@@ -48,6 +48,7 @@ data/*.sqlite-wal
 data/*.sqlite-shm
 data/*.db
 data/*.sqlite3
+data/*.json
 !data/.gitkeep
 
 # logs & local development

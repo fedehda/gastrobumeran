@@ -1,10 +1,38 @@
--- GASTROBUMERAN - PostgreSQL DDL Schema (Consolidado con Fudo API)
+-- GASTROBUMERAN - PostgreSQL DDL Schema (Consolidado con Fudo API y Multi-Tenant Preparation)
 -- Compatible con PostgreSQL 14+ / Supabase / Neon / AWS RDS
+
+-- 0. Restaurantes y Comercios Gastronómicos (Tenant Raíz)
+CREATE TABLE IF NOT EXISTS restaurants (
+    id VARCHAR(64) PRIMARY KEY,
+    slug VARCHAR(64) UNIQUE NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    legal_name VARCHAR(120),
+    cuit VARCHAR(20),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    logo_url TEXT,
+    primary_color VARCHAR(20) DEFAULT '#f59e0b',
+    secondary_color VARCHAR(20) DEFAULT '#1e293b',
+    accent_color VARCHAR(20) DEFAULT '#3b82f6',
+    currency_symbol VARCHAR(10) DEFAULT '$',
+    stamp_icon VARCHAR(10) DEFAULT '🍔',
+    card_slogan VARCHAR(120) DEFAULT 'Club de Fidelización Gastronómica',
+    address VARCHAR(200),
+    city VARCHAR(100),
+    phone VARCHAR(30),
+    whatsapp VARCHAR(30),
+    instagram VARCHAR(60),
+    timezone VARCHAR(50) DEFAULT 'America/Argentina/Buenos_Aires',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_restaurants_slug ON restaurants(slug);
 
 -- 1. Clientes y Balances
 CREATE TABLE IF NOT EXISTS customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    fudo_customer_id VARCHAR(64) UNIQUE,
+    restaurant_id VARCHAR(64) REFERENCES restaurants(id) ON DELETE CASCADE DEFAULT 'resto-local-default',
+    fudo_customer_id VARCHAR(64),
     document_number VARCHAR(20) UNIQUE NOT NULL,
     phone VARCHAR(30),
     email VARCHAR(120),

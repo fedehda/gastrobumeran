@@ -11,6 +11,7 @@ import {
 } from "@/types/loyalty";
 import { getActiveRewards } from "./settings-repo";
 import { getActiveCampaigns } from "./campaign-repo";
+import { getRestaurantBranding } from "./restaurant-repo";
 import { isLegalEntityCuit } from "@/lib/validation/cuit";
 import crypto from "crypto";
 
@@ -543,8 +544,11 @@ export function getCustomerPortalData(identifier: string): CustomerPortalCard | 
   // Recent History (last 10)
   const recent_history = getCustomerPointsHistory(customer.id, 10);
 
-  // QR Payload: high compatibility string
-  const qr_payload = `GASTRO:DNI:${customer.document_number}`;
+  // Restaurant Branding (Sprint O)
+  const restaurant = getRestaurantBranding();
+
+  // QR Payload: high compatibility string with restaurant slug
+  const qr_payload = `GASTRO:${restaurant.slug}:DNI:${customer.document_number}`;
 
   // Active Promotions & Campaigns
   const active_campaigns = getActiveCampaigns();
@@ -560,5 +564,6 @@ export function getCustomerPortalData(identifier: string): CustomerPortalCard | 
     recent_history,
     qr_payload,
     active_campaigns,
+    restaurant,
   };
 }
