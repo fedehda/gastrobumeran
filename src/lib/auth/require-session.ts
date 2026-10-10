@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/db/auth-repo";
 import { AdminRole, AdminUser } from "@/types/loyalty";
 import { DEFAULT_RESTAURANT_ID, getRestaurantBySlug } from "@/lib/db/restaurant-repo";
+import { isOfflineMode, getDefaultRestaurantId } from "@/lib/config/app-mode";
 
 export interface SessionResult {
   user: AdminUser;
@@ -42,6 +43,21 @@ export async function requireSession(
   }
 
   if (!token) {
+    if (isOfflineMode() && process.env.ALLOW_ANONYMOUS_OFFLINE === "true") {
+      return {
+        success: true,
+        user: {
+          id: "offline-local-user",
+          restaurant_id: getDefaultRestaurantId(),
+          name: "Operador Local",
+          email: "caja@local",
+          role: "ADMIN",
+          created_at: new Date().toISOString(),
+        },
+        restaurantId: getDefaultRestaurantId(),
+      };
+    }
+
     return {
       success: false,
       response: NextResponse.json(
@@ -104,7 +120,10 @@ export async function requireSession(
 
   let effectiveRestaurantId = user.restaurant_id || DEFAULT_RESTAURANT_ID;
 
-  if (user.role === "PLATFORM_ADMIN") {
+  if (isOfflineMode()) {
+    // En Modo Local / Offline, fijar siempre de forma determinística al restaurant_id local
+    effectiveRestaurantId = getDefaultRestaurantId();
+  } else if (user.role === "PLATFORM_ADMIN") {
     // Platform admin can operate on any restaurant requested
     if (targetRestoId) {
       effectiveRestaurantId = targetRestoId;

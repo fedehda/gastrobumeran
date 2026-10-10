@@ -91,6 +91,20 @@ export default function AdminPage() {
     }, 4500);
   };
 
+  // Offline Mode detection
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/config/app-mode")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.isOffline) {
+          setIsOffline(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Check authentication session on mount
   useEffect(() => {
     let ignore = false;
@@ -329,6 +343,7 @@ export default function AdminPage() {
         onOpenVoidSale={() => setIsVoidModalOpen(true)}
         onRefreshMetrics={() => refreshData({ syncFudo: true, showFeedback: true })}
         isRefreshing={isRefreshing}
+        isOffline={isOffline}
       />
 
       {/* Tenant Context & Trial Alert Banner */}

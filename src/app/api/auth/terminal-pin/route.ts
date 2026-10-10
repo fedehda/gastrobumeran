@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateWithPin, createSessionToken } from "@/lib/db/auth-repo";
 import { getRestaurantBySlug, getRestaurantById } from "@/lib/db/restaurant-repo";
+import { isOfflineMode, getDefaultRestaurantId } from "@/lib/config/app-mode";
 import { buildRateLimitKey, checkRateLimit, recordFailedAttempt, resetRateLimit } from "@/lib/db/rate-limiter";
 
 function getClientIp(req: Request): string {
@@ -28,6 +29,10 @@ export async function POST(req: Request) {
       targetResto = getRestaurantBySlug(String(slug).trim());
     } else if (restaurantId) {
       targetResto = getRestaurantById(String(restaurantId).trim());
+    }
+
+    if (!targetResto && isOfflineMode()) {
+      targetResto = getRestaurantById(getDefaultRestaurantId());
     }
 
     if (!targetResto) {

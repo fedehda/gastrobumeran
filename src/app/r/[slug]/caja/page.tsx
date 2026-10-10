@@ -118,7 +118,9 @@ export default function TerminalCajaPage() {
   }, [slug]);
 
   const isSubmittingRef = useRef(isSubmitting);
-  isSubmittingRef.current = isSubmitting;
+  useEffect(() => {
+    isSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
 
   const triggerKeyFeedback = useCallback((key: string) => {
     setActiveKey(key);

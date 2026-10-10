@@ -44,6 +44,18 @@ export default function RegisterRestaurantPage() {
 
   // Auto-generate slug when restaurant name changes (unless user manually edited slug)
   const [isManualSlug, setIsManualSlug] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/config/app-mode")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.isOffline) {
+          setIsOffline(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isManualSlug || !restaurantName.trim()) return;
@@ -152,6 +164,26 @@ export default function RegisterRestaurantPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isOffline) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-slate-300 font-sans">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-4 shadow-inner">
+          <Store className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-white">Modo Local Activo</h2>
+        <p className="text-sm text-slate-400 mt-2 max-w-sm">
+          GastroBumeran está configurado en modo monousuario local para este comercio. El registro de nuevos locales en la nube está desactivado.
+        </p>
+        <Link
+          href="/"
+          className="mt-6 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm transition shadow-lg shadow-amber-500/20"
+        >
+          Ir al Terminal POS
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans">

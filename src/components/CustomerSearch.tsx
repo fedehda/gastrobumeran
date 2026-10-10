@@ -19,11 +19,13 @@ export function CustomerSearch({
   const [results, setResults] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleQueryChange = (val: string) => {
     setQuery(val);
+    setSelectedIndex(-1);
     if (!val.trim()) {
       setResults([]);
       setIsLoading(false);
@@ -72,13 +74,45 @@ export function CustomerSearch({
     setIsOpen(false);
     setQuery("");
     setResults([]);
+    setSelectedIndex(-1);
   };
 
   const handleClear = () => {
     setQuery("");
     setResults([]);
+    setSelectedIndex(-1);
     setIsOpen(false);
     inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || results.length === 0) {
+      if (e.key === "ArrowDown" && results.length > 0) {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+    } else if (e.key === "Enter") {
+      if (selectedIndex >= 0 && selectedIndex < results.length) {
+        e.preventDefault();
+        handleSelect(results[selectedIndex]);
+      } else if (results.length === 1) {
+        e.preventDefault();
+        handleSelect(results[0]);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setIsOpen(false);
+      setSelectedIndex(-1);
+    }
   };
 
   return (
@@ -92,6 +126,7 @@ export function CustomerSearch({
           type="text"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           onFocus={() => {
             if (results.length > 0) setIsOpen(true);
           }}
@@ -129,17 +164,22 @@ export function CustomerSearch({
             </div>
           ) : results.length > 0 ? (
             <div className="divide-y divide-slate-100 dark:divide-dark-800">
-              <div className="px-3 py-1.5 bg-slate-50 dark:bg-dark-950/60 text-[11px] font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                Comensales Encontrados ({results.length})
+              <div className="px-3 py-1.5 bg-slate-50 dark:bg-dark-950/60 text-[11px] font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Comensales Encontrados ({results.length})</span>
+                <span className="text-[10px] lowercase text-slate-400 dark:text-gray-500 font-normal">↑↓ navegar • ↵ seleccionar</span>
               </div>
-              {results.map((c) => {
+              {results.map((c, idx) => {
                 const isSelected = c.id === selectedCustomerId;
+                const isHighlighted = selectedIndex === idx;
                 return (
                   <button
                     key={c.id}
                     onClick={() => handleSelect(c)}
+                    onMouseEnter={() => setSelectedIndex(idx)}
                     className={`w-full text-left px-4 py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-dark-800/80 transition-colors group ${
                       isSelected ? "bg-bumeran-500/10 border-l-2 border-bumeran-500" : ""
+                    } ${
+                      isHighlighted ? "bg-amber-500/10 dark:bg-amber-500/15 ring-1 ring-inset ring-amber-500/30" : ""
                     }`}
                   >
                     <div className="flex items-center space-x-3">

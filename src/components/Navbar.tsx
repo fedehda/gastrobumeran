@@ -18,6 +18,7 @@ interface NavbarProps {
   onOpenVoidSale?: () => void;
   onRefreshMetrics: () => void;
   isRefreshing?: boolean;
+  isOffline?: boolean;
 }
 
 export function Navbar({
@@ -33,6 +34,7 @@ export function Navbar({
   onOpenVoidSale,
   onRefreshMetrics,
   isRefreshing,
+  isOffline = false,
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-dark-800 bg-white/85 dark:bg-dark-950/80 backdrop-blur-md transition-colors duration-200">
@@ -85,13 +87,22 @@ export function Navbar({
 
         {/* Status Indicator & Actions */}
         <div className="flex items-center space-x-1.5 sm:space-x-2.5">
-          <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-900 border border-slate-200 dark:border-dark-800">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-xs font-medium text-slate-700 dark:text-gray-300">Caja Online</span>
-          </div>
+          {isOffline ? (
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+              <span className="relative flex h-2 w-2">
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              <span className="text-xs font-semibold">Modo Local (Offline)</span>
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-900 border border-slate-200 dark:border-dark-800">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-medium text-slate-700 dark:text-gray-300">Caja Online</span>
+            </div>
+          )}
 
           {/* Refresh & Fudo Sync Button */}
           <button

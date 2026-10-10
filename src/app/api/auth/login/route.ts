@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateWithPassword, authenticateWithPin, createSessionToken } from "@/lib/db/auth-repo";
 import { getRestaurantBySlug } from "@/lib/db/restaurant-repo";
+import { isOfflineMode, getDefaultRestaurantId } from "@/lib/config/app-mode";
 import {
   buildRateLimitKey,
   checkRateLimit,
@@ -26,7 +27,9 @@ export async function POST(req: Request) {
     const { email, password, pin, restaurantId, restaurantSlug } = body;
 
     let targetRestoId = restaurantId ? String(restaurantId).trim() : undefined;
-    if (!targetRestoId && restaurantSlug) {
+    if (isOfflineMode()) {
+      targetRestoId = getDefaultRestaurantId();
+    } else if (!targetRestoId && restaurantSlug) {
       const resto = getRestaurantBySlug(String(restaurantSlug));
       if (resto) {
         targetRestoId = resto.id;

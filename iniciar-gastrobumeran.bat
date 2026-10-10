@@ -43,7 +43,14 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
 if not defined LOCAL_IP set "LOCAL_IP=127.0.0.1"
 
 echo ==============================================================================
+set "MODE_LABEL=Cloud SaaS Multi-Tenant"
+if exist ".env.local" (
+    findstr /i "APP_MODE=offline APP_MODE=local SINGLE_TENANT=true" .env.local >nul 2>nul
+    if not errorlevel 1 set "MODE_LABEL=Local Offline (PC del Comercio)"
+)
+
 echo   Iniciando GastroBumeran (Escuchando en toda la red local)
+echo   Modo de Ejecucion: [ %MODE_LABEL% ]
 echo.
 echo   * Acceso en esta PC (Caja central):
 echo     http://localhost:3000

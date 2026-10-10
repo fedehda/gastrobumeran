@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { PlusCircle, Award, CheckCircle2, AlertCircle, Flame } from "lucide-react";
 import { Customer, LoyaltySettings, LoyaltyCampaign } from "@/types/loyalty";
 
@@ -68,6 +68,12 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeCampaigns, setActiveCampaigns] = useState<LoyaltyCampaign[]>([]);
+  const amountInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Auto-focus amount input when customer changes
+    amountInputRef.current?.focus();
+  }, [customer.id]);
 
   useEffect(() => {
     fetch("/api/campaigns/active")
@@ -202,6 +208,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
                 $
               </div>
               <input
+                ref={amountInputRef}
                 type="number"
                 step="0.01"
                 min="1"
