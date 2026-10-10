@@ -442,11 +442,35 @@ export function calculateCustomerTier(visitsCount: number): CustomerTier {
 export function getCustomerPortalData(identifier: string): CustomerPortalCard | null {
   if (!identifier) return null;
 
-  // Clean identifier in case it comes with QR prefix or spaces
+  // Clean identifier in case it comes with QR prefix, URLs or spaces
   let clean = identifier.trim();
-  if (clean.startsWith("GASTRO:DNI:")) clean = clean.replace("GASTRO:DNI:", "").trim();
-  else if (clean.startsWith("GASTRO:CARD:")) clean = clean.replace("GASTRO:CARD:", "").trim();
-  else if (clean.startsWith("GASTRO:")) clean = clean.replace("GASTRO:", "").trim();
+
+  // If payload is a full URL (e.g. https://domain.com/portal?dni=12345678 or /r/slug?dni=...)
+  if (clean.includes("http://") || clean.includes("https://") || clean.startsWith("/")) {
+    try {
+      const parsedUrl = new URL(clean, "https://gastrobumeran.local");
+      const urlDni = parsedUrl.searchParams.get("dni") || parsedUrl.searchParams.get("id") || parsedUrl.searchParams.get("query");
+      if (urlDni) {
+        clean = urlDni.trim();
+      }
+    } catch {
+      const match = clean.match(/[?&]dni=([^&#]+)/i);
+      if (match && match[1]) {
+        clean = decodeURIComponent(match[1]).trim();
+      }
+    }
+  }
+
+  if (clean.startsWith("GASTRO:")) {
+    const parts = clean.split(":");
+    if (parts.length >= 4 && parts[2] === "DNI") {
+      clean = parts[3].trim();
+    } else if (parts.length >= 3 && parts[1] === "DNI") {
+      clean = parts[2].trim();
+    } else {
+      clean = parts[parts.length - 1].trim();
+    }
+  }
 
   // 1. Try finding by Document (DNI)
   let customer = findCustomerByDocument(clean);

@@ -83,3 +83,35 @@ body {
   background: rgba(21, 24, 36, 0.85);
   box-shadow: 0 10px 30px -10px rgba(240, 116, 41, 0.2);
 }
+
+/* Scanner & UI Animations */
+@keyframes scan {
+  0% {
+    top: 6%;
+    opacity: 0.7;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 6%;
+    opacity: 0.7;
+  }
+}
+
+.animate-scan {
+  position: absolute;
+  animation: scan 2.2s ease-in-out infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+

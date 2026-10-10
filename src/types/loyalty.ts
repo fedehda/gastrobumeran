@@ -319,11 +319,16 @@ export interface BackofficeAnalytics {
   recentCrons: CronLog[];
 }
 
+export type AdminRole = "ADMIN" | "CASHIER" | "SUPERVISOR" | "OPERATOR" | "PLATFORM_ADMIN" | "OWNER";
+
 export interface AdminUser {
   id: string;
+  restaurant_id?: string | null;
+  restaurant_name?: string | null;
+  restaurant_slug?: string | null;
   name: string;
   email: string;
-  role: "ADMIN" | "CASHIER" | "SUPERVISOR";
+  role: AdminRole;
   created_at: string;
 }
 
