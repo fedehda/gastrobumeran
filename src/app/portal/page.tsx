@@ -12,7 +12,7 @@ import {
   Check,
   Download,
 } from "lucide-react";
-import { CustomerPortalCard } from "@/types/loyalty";
+import { CustomerPortalCard, PortalRewardProgress } from "@/types/loyalty";
 import { LoyaltyCardVisual } from "@/components/portal/LoyaltyCardVisual";
 import { DynamicQrModal } from "@/components/portal/DynamicQrModal";
 import { CustomerRewardsCatalog } from "@/components/portal/CustomerRewardsCatalog";
@@ -29,6 +29,7 @@ function PortalContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedRewardForQr, setSelectedRewardForQr] = useState<PortalRewardProgress | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
   const isSharingRef = useRef(false);
@@ -261,13 +262,19 @@ function PortalContent() {
             {/* Loyalty Membership Card */}
             <LoyaltyCardVisual
               cardData={cardData}
-              onOpenQr={() => setIsQrModalOpen(true)}
+              onOpenQr={() => {
+                setSelectedRewardForQr(null);
+                setIsQrModalOpen(true);
+              }}
             />
 
             {/* Quick Action Button to Show QR Code */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsQrModalOpen(true)}
+                onClick={() => {
+                  setSelectedRewardForQr(null);
+                  setIsQrModalOpen(true);
+                }}
                 className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-dark-950 font-extrabold text-sm transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
                 <QrCode className="w-5 h-5 text-dark-950" />
@@ -281,7 +288,10 @@ function PortalContent() {
             {/* Rewards Catalog */}
             <CustomerRewardsCatalog
               rewardsProgress={cardData.rewards_progress}
-              onOpenQr={() => setIsQrModalOpen(true)}
+              onOpenQr={(reward) => {
+                setSelectedRewardForQr(reward || null);
+                setIsQrModalOpen(true);
+              }}
             />
 
             {/* Recent History / Activity */}
@@ -290,11 +300,16 @@ function PortalContent() {
             {/* Dynamic QR Modal */}
             <DynamicQrModal
               isOpen={isQrModalOpen}
-              onClose={() => setIsQrModalOpen(false)}
+              onClose={() => {
+                setIsQrModalOpen(false);
+                setSelectedRewardForQr(null);
+              }}
               qrPayload={cardData.qr_payload}
               customerName={cardData.customer.name}
               documentNumber={cardData.customer.document_number}
               pointsBalance={cardData.customer.points_balance}
+              selectedReward={selectedRewardForQr}
+              onClearSelectedReward={() => setSelectedRewardForQr(null)}
             />
           </>
         )}

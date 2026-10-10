@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import QRCode from "qrcode";
-import { X, QrCode, Sparkles, Copy, Check, Share2, Sun } from "lucide-react";
+import { X, QrCode, Sparkles, Copy, Check, Share2, Sun, Gift } from "lucide-react";
+import { PortalRewardProgress } from "@/types/loyalty";
 
 interface DynamicQrModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface DynamicQrModalProps {
   customerName: string;
   documentNumber: string;
   pointsBalance: number;
+  selectedReward?: PortalRewardProgress | null;
+  onClearSelectedReward?: () => void;
 }
 
 export function DynamicQrModal({
@@ -20,6 +23,8 @@ export function DynamicQrModal({
   customerName,
   documentNumber,
   pointsBalance,
+  selectedReward,
+  onClearSelectedReward,
 }: DynamicQrModalProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [isCopied, setIsCopied] = useState(false);
@@ -27,9 +32,13 @@ export function DynamicQrModal({
   const isSharingRef = useRef(false);
 
   useEffect(() => {
-    if (!qrPayload || !isOpen) return;
+    const payloadToEncode = selectedReward
+      ? `GASTRO:REDEEM:${selectedReward.reward.id}:DNI:${documentNumber}`
+      : qrPayload;
 
-    QRCode.toDataURL(qrPayload, {
+    if (!payloadToEncode || !isOpen) return;
+
+    QRCode.toDataURL(payloadToEncode, {
       width: 320,
       margin: 2,
       color: {
@@ -40,7 +49,7 @@ export function DynamicQrModal({
     })
       .then((url) => setQrDataUrl(url))
       .catch((err) => console.error("Error generating QR:", err));
-  }, [qrPayload, isOpen]);
+  }, [qrPayload, selectedReward, documentNumber, isOpen]);
 
   if (!isOpen) return null;
 
@@ -60,9 +69,16 @@ export function DynamicQrModal({
     if (typeof navigator !== "undefined" && navigator.share) {
       isSharingRef.current = true;
       try {
+        const shareTitle = selectedReward
+          ? `Canje GastroBumeran: ${selectedReward.reward.name}`
+          : "Mi Tarjeta GastroBumeran";
+        const shareText = selectedReward
+          ? `¡Hola! Solicité canjear ${selectedReward.reward.name} en GastroBumeran (${customerName}).`
+          : `¡Hola! Esta es mi tarjeta de fidelización en GastroBumeran (${customerName}). Puntos: ${pointsBalance}`;
+
         await navigator.share({
-          title: "Mi Tarjeta GastroBumeran",
-          text: `¡Hola! Esta es mi tarjeta de fidelización en GastroBumeran (${customerName}). Puntos: ${pointsBalance}`,
+          title: shareTitle,
+          text: shareText,
           url: window.location.href,
         });
         setIsShared(true);
@@ -87,7 +103,13 @@ export function DynamicQrModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-gradient-to-b dark:from-dark-900 dark:to-dark-950 border border-slate-200 dark:border-amber-500/40 p-6 shadow-2xl shadow-slate-900/10 dark:shadow-amber-500/10 text-center">
+      <div
+        className={`relative w-full max-w-sm rounded-3xl bg-white dark:bg-gradient-to-b dark:from-dark-900 dark:to-dark-950 border p-6 shadow-2xl text-center ${
+          selectedReward
+            ? "border-emerald-300 dark:border-emerald-500/50 shadow-emerald-500/10"
+            : "border-slate-200 dark:border-amber-500/40 shadow-slate-900/10 dark:shadow-amber-500/10"
+        }`}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -98,29 +120,78 @@ export function DynamicQrModal({
         </button>
 
         {/* Header */}
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
-            <QrCode className="w-4 h-4" />
-          </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-            Código QR Personal
-          </span>
-        </div>
+        {selectedReward ? (
+          <>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 animate-pulse">
+                <Gift className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Canje de Producto Solicitado
+              </span>
+            </div>
 
-        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 truncate px-4">
-          {customerName}
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-gray-400 mb-5">
-          Presentá este código en el mostrador o mostráselo al mozo al momento de pagar.
-        </p>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1.5 px-4 leading-tight">
+              {selectedReward.reward.name}
+            </h3>
+
+            {/* Reward cost pill */}
+            <div className="inline-flex items-center gap-3 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold mb-3">
+              <span>
+                Costo:{" "}
+                <strong className="text-emerald-900 dark:text-emerald-200">
+                  {selectedReward.reward.reward_type === "POINTS" &&
+                    `${selectedReward.reward.requirement_value} Pts`}
+                  {selectedReward.reward.reward_type === "VISIT_MILESTONE" &&
+                    `${selectedReward.reward.requirement_value} Visitas`}
+                  {selectedReward.reward.reward_type === "BIRTHDAY_GIFT" && "Semana Natalicia"}
+                </strong>
+              </span>
+              {selectedReward.reward.reward_type === "POINTS" && (
+                <span>
+                  Restante:{" "}
+                  <strong>
+                    {Math.max(0, pointsBalance - selectedReward.reward.requirement_value)} pts
+                  </strong>
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-gray-400 mb-4 px-2">
+              Mostrá este código al mozo o cajero para confirmar y entregar tu producto.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-full bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                <QrCode className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Código QR Personal
+              </span>
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 truncate px-4">
+              {customerName}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-gray-400 mb-5">
+              Presentá este código en el mostrador o mostráselo al mozo al momento de pagar.
+            </p>
+          </>
+        )}
 
         {/* QR Code Container with High-Contrast White Background */}
-        <div className="relative mx-auto w-64 h-64 bg-white rounded-2xl p-3 shadow-inner flex items-center justify-center border-4 border-amber-400/80">
+        <div
+          className={`relative mx-auto w-64 h-64 bg-white rounded-2xl p-3 shadow-inner flex items-center justify-center border-4 ${
+            selectedReward ? "border-emerald-400/90" : "border-amber-400/80"
+          }`}
+        >
           {qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={qrDataUrl}
-              alt="QR de Fidelización"
+              alt={selectedReward ? "QR de Canje de Producto" : "QR de Fidelización"}
               className="w-full h-full object-contain"
             />
           ) : (
@@ -150,8 +221,21 @@ export function DynamicQrModal({
           </button>
         </div>
 
+        {/* Toggle back to general QR button if in reward mode */}
+        {selectedReward && onClearSelectedReward && (
+          <div className="mt-2.5">
+            <button
+              type="button"
+              onClick={onClearSelectedReward}
+              className="text-xs font-semibold text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-300 underline transition inline-flex items-center gap-1"
+            >
+              <span>Cambiar a mi QR general de socio</span>
+            </button>
+          </div>
+        )}
+
         {/* Brightness Tip */}
-        <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-amber-800 dark:text-amber-300/80 bg-amber-500/10 rounded-lg py-1.5 px-3">
+        <div className="mt-3.5 flex items-center justify-center gap-1.5 text-[11px] text-amber-800 dark:text-amber-300/80 bg-amber-500/10 rounded-lg py-1.5 px-3">
           <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
           <span>Sube el brillo de tu pantalla para facilitar el escaneo en caja</span>
         </div>
@@ -171,7 +255,11 @@ export function DynamicQrModal({
           </button>
           <button
             onClick={onClose}
-            className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-dark-950 text-xs font-bold transition shadow-lg shadow-amber-500/20"
+            className={`py-2.5 px-3 rounded-xl text-xs font-bold transition shadow-lg ${
+              selectedReward
+                ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 shadow-emerald-500/20"
+                : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-dark-950 shadow-amber-500/20"
+            }`}
           >
             Entendido
           </button>

@@ -72,19 +72,30 @@ async function runMobileTerminalTests() {
   // 3. Probar lectura de diferentes formatos de códigos QR
   console.log("\n--- TEST 3: PARSEO INTELIGENTE DE CÓDIGOS QR MÓVILES ---");
   const qrFormats = [
-    { label: "Formato Nativo Scoped", payload: `GASTRO:${restaurant.slug}:DNI:${testDni}` },
-    { label: "Formato Global", payload: `GASTRO:DNI:${testDni}` },
-    { label: "Enlace URL de Portal PWA", payload: `https://gastrobumeran.local/portal?dni=${testDni}` },
-    { label: "Enlace URL Scoped Resto", payload: `https://gastrobumeran.local/r/${restaurant.slug}?dni=${testDni}` },
-    { label: "DNI Numérico Directo", payload: `${testDni}` },
+    { label: "Formato Nativo Scoped", payload: `GASTRO:${restaurant.slug}:DNI:${testDni}`, expectedReward: null },
+    { label: "Formato Global", payload: `GASTRO:DNI:${testDni}`, expectedReward: null },
+    { label: "Enlace URL de Portal PWA", payload: `https://gastrobumeran.local/portal?dni=${testDni}`, expectedReward: null },
+    { label: "Enlace URL Scoped Resto", payload: `https://gastrobumeran.local/r/${restaurant.slug}?dni=${testDni}`, expectedReward: null },
+    { label: "DNI Numérico Directo", payload: `${testDni}`, expectedReward: null },
+    { label: "QR Canje Específico (Global)", payload: `GASTRO:REDEEM:1:DNI:${testDni}`, expectedReward: 1 },
+    { label: "QR Canje Específico (Scoped Resto)", payload: `GASTRO:${restaurant.slug}:REDEEM:2:DNI:${testDni}`, expectedReward: 2 },
+    { label: "QR Canje Específico (URL con params)", payload: `https://gastrobumeran.local/portal?dni=${testDni}&redeem=3`, expectedReward: 3 },
   ];
 
-  for (const { label, payload } of qrFormats) {
+  for (const { label, payload, expectedReward } of qrFormats) {
     const cardData = getCustomerPortalData(payload, restoId, restaurant.slug);
     if (!cardData || cardData.customer.document_number !== testDni) {
       throw new Error(`❌ Falló la resolución para el formato "${label}": ${payload}`);
     }
-    console.log(`✅ [${label}] detectado y decodificado correctamente.`);
+
+    // Verificar extracción de recompensa solicitada por regex
+    const redeemMatch = payload.match(/(?:REDEEM:|redeem=)(\d+)/i);
+    const parsedRewardId = redeemMatch ? parseInt(redeemMatch[1], 10) : null;
+    if (parsedRewardId !== expectedReward) {
+      throw new Error(`❌ Error extrayendo recompensa para "${label}". Esperado: ${expectedReward}, Obtenido: ${parsedRewardId}`);
+    }
+
+    console.log(`✅ [${label}] detectado y decodificado correctamente (Reward ID: ${parsedRewardId || "Ninguno"}).`);
   }
 
   // 4. Verificar tarjeta del cliente: saldo, nivel, recompensas disponibles

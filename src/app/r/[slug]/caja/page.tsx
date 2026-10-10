@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Lock, Delete, Store, ShieldCheck, AlertCircle } from "lucide-react";
+import { Lock, Delete, Store, ShieldCheck, AlertCircle, Keyboard } from "lucide-react";
 import { AdminUser } from "@/types/loyalty";
 import { MobileTerminal } from "@/components/terminal/MobileTerminal";
 
@@ -12,6 +12,7 @@ export default function TerminalCajaPage() {
   const slug = typeof params?.slug === "string" ? params.slug : "";
 
   const [pin, setPin] = useState("");
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [restaurant, setRestaurant] = useState<{
     id: string;
     name: string;
@@ -116,28 +117,107 @@ export default function TerminalCajaPage() {
     }
   }, [slug]);
 
-  const handleDigit = (digit: string) => {
-    if (pin.length < 4 && !isSubmitting) {
-      const nextPin = pin + digit;
-      setPin(nextPin);
-      setError(null);
-      if (nextPin.length === 4) {
-        handleSubmitPin(nextPin);
-      }
-    }
-  };
+  const isSubmittingRef = useRef(isSubmitting);
+  isSubmittingRef.current = isSubmitting;
 
-  const handleDelete = () => {
-    if (isSubmitting) return;
+  const triggerKeyFeedback = useCallback((key: string) => {
+    setActiveKey(key);
+    setTimeout(() => {
+      setActiveKey((curr) => (curr === key ? null : curr));
+    }, 110);
+  }, []);
+
+  const handleDigit = useCallback(
+    (digit: string) => {
+      if (isSubmittingRef.current) return;
+      setError(null);
+      triggerKeyFeedback(digit);
+      setPin((prev) => {
+        if (prev.length >= 4) return prev;
+        const nextPin = prev + digit;
+        if (nextPin.length === 4) {
+          handleSubmitPin(nextPin);
+        }
+        return nextPin;
+      });
+    },
+    [handleSubmitPin, triggerKeyFeedback]
+  );
+
+  const handleDelete = useCallback(() => {
+    if (isSubmittingRef.current) return;
+    triggerKeyFeedback("DELETE");
     setPin((prev) => prev.slice(0, -1));
     setError(null);
-  };
+  }, [triggerKeyFeedback]);
 
-  const handleClear = () => {
-    if (isSubmitting) return;
+  const handleClear = useCallback(() => {
+    if (isSubmittingRef.current) return;
+    triggerKeyFeedback("CLEAR");
     setPin("");
     setError(null);
-  };
+  }, [triggerKeyFeedback]);
+
+  // Physical keyboard and numpad event listener (identical behavior to login portal)
+  useEffect(() => {
+    if (isAuthenticated) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input or textarea
+      const target = e.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === "input" || tagName === "textarea") {
+        return;
+      }
+
+      if (isSubmittingRef.current) return;
+
+      // Digits 0-9 (top row or numpad)
+      let digit: string | null = null;
+      if (/^[0-9]$/.test(e.key)) {
+        digit = e.key;
+      } else if (e.code && /^Numpad[0-9]$/.test(e.code)) {
+        digit = e.code.replace("Numpad", "");
+      }
+
+      if (digit !== null) {
+        e.preventDefault();
+        handleDigit(digit);
+        return;
+      }
+
+      // Backspace
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        handleDelete();
+        return;
+      }
+
+      // Clear (Delete, Escape or 'c' / 'C')
+      if (e.key === "Delete" || e.key === "Escape" || e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        handleClear();
+        return;
+      }
+
+      // Enter
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setPin((current) => {
+          if (current.length === 4) {
+            handleSubmitPin(current);
+          }
+          return current;
+        });
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAuthenticated, handleDigit, handleDelete, handleClear, handleSubmitPin]);
 
   // Handle Logout / Lock Terminal
   const handleLogout = async () => {
@@ -254,22 +334,33 @@ export default function TerminalCajaPage() {
 
         {/* Numeric Keypad */}
         <div className="grid grid-cols-3 gap-3 w-full">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
-            <button
-              key={digit}
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleDigit(digit)}
-              className="h-16 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 active:bg-amber-500/20 active:border-amber-500/50 border border-slate-700/60 text-2xl font-bold text-white shadow-md transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            >
-              {digit}
-            </button>
-          ))}
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => {
+            const isFeedbackActive = activeKey === digit;
+            return (
+              <button
+                key={digit}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleDigit(digit)}
+                className={`h-16 rounded-2xl border text-2xl font-bold shadow-md transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${
+                  isFeedbackActive
+                    ? "bg-amber-500/30 border-amber-400 text-amber-300 scale-[0.98] ring-2 ring-amber-400/60"
+                    : "bg-slate-800/80 hover:bg-slate-700/80 active:bg-amber-500/20 active:border-amber-500/50 border-slate-700/60 text-white"
+                }`}
+              >
+                {digit}
+              </button>
+            );
+          })}
           <button
             type="button"
             disabled={isSubmitting || pin.length === 0}
             onClick={handleClear}
-            className="h-16 rounded-2xl bg-slate-900/60 hover:bg-slate-800/60 border border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider transition-all flex items-center justify-center"
+            className={`h-16 rounded-2xl border text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-center ${
+              activeKey === "CLEAR"
+                ? "bg-slate-700 border-slate-500 text-white scale-[0.98]"
+                : "bg-slate-900/60 hover:bg-slate-800/60 border border-slate-800 text-slate-400"
+            }`}
           >
             Limpiar
           </button>
@@ -277,7 +368,11 @@ export default function TerminalCajaPage() {
             type="button"
             disabled={isSubmitting}
             onClick={() => handleDigit("0")}
-            className="h-16 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 active:bg-amber-500/20 active:border-amber-500/50 border border-slate-700/60 text-2xl font-bold text-white shadow-md transition-all flex items-center justify-center"
+            className={`h-16 rounded-2xl border text-2xl font-bold shadow-md transition-all flex items-center justify-center ${
+              activeKey === "0"
+                ? "bg-amber-500/30 border-amber-400 text-amber-300 scale-[0.98] ring-2 ring-amber-400/60"
+                : "bg-slate-800/80 hover:bg-slate-700/80 active:bg-amber-500/20 active:border-amber-500/50 border-slate-700/60 text-white"
+            }`}
           >
             0
           </button>
@@ -285,11 +380,21 @@ export default function TerminalCajaPage() {
             type="button"
             disabled={isSubmitting || pin.length === 0}
             onClick={handleDelete}
-            className="h-16 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 active:bg-slate-600 border border-slate-700/60 text-slate-300 shadow-md transition-all flex items-center justify-center"
+            className={`h-16 rounded-2xl border shadow-md transition-all flex items-center justify-center ${
+              activeKey === "DELETE"
+                ? "bg-slate-700 border-slate-500 text-white scale-[0.98]"
+                : "bg-slate-800/80 hover:bg-slate-700/80 active:bg-slate-600 border border-slate-700/60 text-slate-300"
+            }`}
             aria-label="Borrar dígito"
           >
             <Delete className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Keyboard Helper Hint */}
+        <div className="flex items-center justify-center space-x-1.5 text-[11px] text-slate-400 mt-3.5">
+          <Keyboard className="w-3.5 h-3.5 text-amber-400/80" />
+          <span>Podés usar los números de tu teclado físico o numpad</span>
         </div>
 
         {isSubmitting && (

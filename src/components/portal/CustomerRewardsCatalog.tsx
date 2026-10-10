@@ -6,7 +6,7 @@ import { PortalRewardProgress } from "@/types/loyalty";
 
 interface CustomerRewardsCatalogProps {
   rewardsProgress: PortalRewardProgress[];
-  onOpenQr: () => void;
+  onOpenQr: (reward?: PortalRewardProgress) => void;
 }
 
 export function CustomerRewardsCatalog({
@@ -169,11 +169,11 @@ export function CustomerRewardsCatalog({
                   {/* Redeem Button or Action Prompt */}
                   {is_redeemable && (
                     <button
-                      onClick={onOpenQr}
-                      className="mt-3 w-full py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5"
+                      onClick={() => onOpenQr(item)}
+                      className="mt-3 w-full py-2.5 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-98"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Pedir en Caja (Mostrar QR)</span>
+                      <span>Canjear (Generar QR de Canje)</span>
                       <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-70" />
                     </button>
                   )}

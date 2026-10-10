@@ -487,16 +487,12 @@ export function getCustomerPortalData(
     }
   }
 
-  if (clean.startsWith("GASTRO:")) {
-    // If format is GASTRO:<slug>:DNI:<dni> or GASTRO:DNI:<dni>
+  if (clean.includes(":DNI:")) {
+    const afterDni = clean.split(":DNI:")[1];
+    clean = afterDni.split(":")[0].trim();
+  } else if (clean.startsWith("GASTRO:")) {
     const parts = clean.split(":");
-    if (parts.length >= 4 && parts[2] === "DNI") {
-      clean = parts[3].trim();
-    } else if (parts.length >= 3 && parts[1] === "DNI") {
-      clean = parts[2].trim();
-    } else {
-      clean = parts[parts.length - 1].trim();
-    }
+    clean = parts[parts.length - 1].trim();
   }
 
   // 1. Try finding by Document (DNI) in this restaurant

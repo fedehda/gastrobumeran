@@ -10,8 +10,11 @@ import {
   ArrowLeft,
   AlertCircle,
   LayoutDashboard,
+  Gift,
+  Check,
+  X,
 } from "lucide-react";
-import { CustomerPortalCard, Customer, AdminUser } from "@/types/loyalty";
+import { CustomerPortalCard, Customer, AdminUser, PortalRewardProgress } from "@/types/loyalty";
 import { QrCameraScanner } from "./QrCameraScanner";
 import { CustomerLoyaltyCard } from "./CustomerLoyaltyCard";
 import { RewardsRedeemCatalog } from "./RewardsRedeemCatalog";
@@ -50,11 +53,22 @@ export function MobileTerminal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastReceipt, setLastReceipt] = useState<LastRedemptionReceipt | null>(null);
 
+  // Live reward redemption requested via scanned QR
+  const [requestedRewardId, setRequestedRewardId] = useState<number | null>(null);
+  const [isRedeemingDirect, setIsRedeemingDirect] = useState(false);
+  const [directRedeemError, setDirectRedeemError] = useState<string | null>(null);
+
   // Load customer card by scanned QR code payload or manual document string
   const handleScanSuccess = useCallback(
     async (rawCode: string) => {
       setIsLoadingCustomer(true);
       setErrorMessage(null);
+      setDirectRedeemError(null);
+
+      // Detect if this QR encodes a specific reward redemption request
+      const redeemMatch = rawCode.match(/(?:REDEEM:|redeem=)(\d+)/i);
+      const targetRewardId = redeemMatch ? parseInt(redeemMatch[1], 10) : null;
+      setRequestedRewardId(targetRewardId);
 
       try {
         const res = await fetch(
@@ -131,10 +145,49 @@ export function MobileTerminal({
     setActiveStep("RECEIPT");
   };
 
+  // Direct redemption action triggered from scanned QR prompt
+  const handleDirectRedeem = async (item: PortalRewardProgress) => {
+    if (!customerCard) return;
+    setIsRedeemingDirect(true);
+    setDirectRedeemError(null);
+
+    try {
+      const res = await fetch("/api/rewards/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: customerCard.customer.id,
+          rewardId: item.reward.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "No se pudo procesar el canje.");
+      }
+
+      const updatedCustomer: Customer = data.data.customer;
+      const pointsDeducted: number = data.data.points_deducted || 0;
+      const message: string =
+        data.data.message || `Canje realizado con éxito: ${item.reward.name}`;
+
+      handleRedeemSuccess(updatedCustomer, item.reward.name, pointsDeducted, message);
+      setRequestedRewardId(null);
+    } catch (err: unknown) {
+      setDirectRedeemError(
+        err instanceof Error ? err.message : "Error al procesar el canje."
+      );
+    } finally {
+      setIsRedeemingDirect(false);
+    }
+  };
+
   // Reset back to scanner
   const handleResetToScanner = () => {
     setCustomerCard(null);
     setErrorMessage(null);
+    setRequestedRewardId(null);
+    setDirectRedeemError(null);
     setActiveStep("SCAN");
   };
 
@@ -142,6 +195,12 @@ export function MobileTerminal({
   const handleContinueWithCustomer = () => {
     setActiveStep("CUSTOMER");
   };
+
+  // Calculate requested reward if present in scanned QR
+  const requestedRewardProgress =
+    customerCard && requestedRewardId
+      ? customerCard.rewards_progress.find((item) => item.reward.id === requestedRewardId)
+      : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950 font-sans">
@@ -251,6 +310,140 @@ export function MobileTerminal({
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Volver al Escáner</span>
             </button>
+
+            {/* High Priority: Scanned Redemption Request */}
+            {requestedRewardProgress && (
+              <div className="rounded-3xl p-5 bg-gradient-to-br from-amber-500/15 via-slate-900 to-amber-500/10 border-2 border-amber-400 shadow-2xl shadow-amber-500/20 space-y-3.5 animate-in slide-in-from-top-4 duration-300">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                      <Gift className="w-5 h-5 animate-bounce" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Canje Solicitado en Celular
+                      </span>
+                      <h3 className="text-base font-black text-white leading-tight mt-0.5">
+                        {requestedRewardProgress.reward.name}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRequestedRewardId(null)}
+                    className="p-1 rounded-full text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition"
+                    title="Ignorar y ver catálogo completo"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Details Box */}
+                <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
+                  {requestedRewardProgress.reward.description && (
+                    <p className="text-slate-300 text-xs">
+                      {requestedRewardProgress.reward.description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-850">
+                    <span className="text-slate-400">Costo requerido:</span>
+                    <span className="font-bold text-amber-400">
+                      {requestedRewardProgress.reward.reward_type === "POINTS" &&
+                        `${requestedRewardProgress.reward.requirement_value} Puntos`}
+                      {requestedRewardProgress.reward.reward_type === "VISIT_MILESTONE" &&
+                        `${requestedRewardProgress.reward.requirement_value} Visitas`}
+                      {requestedRewardProgress.reward.reward_type === "BIRTHDAY_GIFT" &&
+                        "Semana Natalicia"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Saldo actual del cliente:</span>
+                    <span className="font-semibold text-white">
+                      {customerCard.customer.points_balance} pts ({customerCard.customer.visit_count} visitas)
+                    </span>
+                  </div>
+
+                  {requestedRewardProgress.reward.reward_type === "POINTS" && (
+                    <div className="flex items-center justify-between text-emerald-400 font-semibold">
+                      <span>Saldo tras este canje:</span>
+                      <span>
+                        {Math.max(
+                          0,
+                          customerCard.customer.points_balance -
+                            requestedRewardProgress.reward.requirement_value
+                        )}{" "}
+                        pts
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Validation Notice / Action Button */}
+                {requestedRewardProgress.is_redeemable ? (
+                  <div className="space-y-2">
+                    {directRedeemError && (
+                      <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                        <span>{directRedeemError}</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={isRedeemingDirect}
+                      onClick={() => handleDirectRedeem(requestedRewardProgress)}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isRedeemingDirect ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                          <span>Procesando canje y débito...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-5 h-5 stroke-[3]" />
+                          <span>Aceptar y Entregar Canje</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-rose-400">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Saldo insuficiente para este canje</span>
+                    </div>
+                    <p className="text-[11px] text-rose-300/80">
+                      El cliente solicitó este premio pero le faltan{" "}
+                      {requestedRewardProgress.points_needed > 0
+                        ? `${requestedRewardProgress.points_needed} puntos`
+                        : `${requestedRewardProgress.visits_needed} visitas`}
+                      .
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {requestedRewardId && !requestedRewardProgress && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-bold">Premio solicitado no disponible</p>
+                  <p className="text-[11px] text-amber-300/80">
+                    El código QR hacía referencia a un premio que no está activo actualmente. Podés seleccionar otro premio del catálogo debajo.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRequestedRewardId(null)}
+                  className="p-1 rounded text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* Customer Digital Card Display */}
             <CustomerLoyaltyCard

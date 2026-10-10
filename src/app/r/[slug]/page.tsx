@@ -22,7 +22,7 @@ import {
   User,
   ArrowRight,
 } from "lucide-react";
-import { CustomerPortalCard } from "@/types/loyalty";
+import { CustomerPortalCard, PortalRewardProgress } from "@/types/loyalty";
 import { LoyaltyCardVisual } from "@/components/portal/LoyaltyCardVisual";
 import { DynamicQrModal } from "@/components/portal/DynamicQrModal";
 import { CustomerRewardsCatalog } from "@/components/portal/CustomerRewardsCatalog";
@@ -55,6 +55,7 @@ export default function RestaurantCustomerPortalPage() {
 
   // Modals & UI Toggles
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedRewardForQr, setSelectedRewardForQr] = useState<PortalRewardProgress | null>(null);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"LOGIN" | "ENROLL">("LOGIN");
 
@@ -85,10 +86,15 @@ export default function RestaurantCustomerPortalPage() {
   // 1. Fetch restaurant public branding info
   useEffect(() => {
     if (!slug) return;
-    setLoadingResto(true);
+    let isCancelled = false;
+    Promise.resolve().then(() => {
+      if (!isCancelled) setLoadingResto(true);
+    });
+
     fetch(`/api/r/${slug}/info`)
       .then((res) => res.json())
       .then((data) => {
+        if (isCancelled) return;
         if (data.success && data.restaurant) {
           setRestaurant(data.restaurant);
         } else {
@@ -96,10 +102,17 @@ export default function RestaurantCustomerPortalPage() {
         }
       })
       .catch((err) => {
+        if (isCancelled) return;
         console.error("Error fetching restaurant info:", err);
         setErrorMessage("Error de conexión al cargar el local.");
       })
-      .finally(() => setLoadingResto(false));
+      .finally(() => {
+        if (!isCancelled) setLoadingResto(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [slug]);
 
   // 2. Load Customer Card function
@@ -129,7 +142,7 @@ export default function RestaurantCustomerPortalPage() {
     [slug, storageKey]
   );
 
-  // 3. Try Auto-restore session from scoped localStorage
+  // 3. Try Auto-restore session from scoped localStorage or URL
   useEffect(() => {
     if (typeof window === "undefined" || !slug) return;
     try {
@@ -645,7 +658,7 @@ export default function RestaurantCustomerPortalPage() {
           /* ============================================================ */
           /* CARD LOADED: CUSTOMER LOYALTY CARD PORTAL                    */
           /* ============================================================ */
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             {/* Quick Actions Bar */}
             <div className="flex items-center justify-between">
               <div>
@@ -665,7 +678,10 @@ export default function RestaurantCustomerPortalPage() {
                   <span>Compartir</span>
                 </button>
                 <button
-                  onClick={() => setIsQrModalOpen(true)}
+                  onClick={() => {
+                    setSelectedRewardForQr(null);
+                    setIsQrModalOpen(true);
+                  }}
                   className="px-4 py-2 rounded-xl font-bold text-xs text-slate-950 flex items-center gap-1.5 shadow-md transition"
                   style={{ backgroundColor: primaryColor }}
                 >
@@ -676,13 +692,35 @@ export default function RestaurantCustomerPortalPage() {
             </div>
 
             {/* Visual Loyalty Card */}
-            <LoyaltyCardVisual cardData={cardData} onOpenQr={() => setIsQrModalOpen(true)} />
+            <LoyaltyCardVisual
+              cardData={cardData}
+              onOpenQr={() => {
+                setSelectedRewardForQr(null);
+                setIsQrModalOpen(true);
+              }}
+            />
+
+            {/* Quick Action Button */}
+            <button
+              onClick={() => {
+                setSelectedRewardForQr(null);
+                setIsQrModalOpen(true);
+              }}
+              className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm text-slate-950 shadow-xl flex items-center justify-center gap-2 transition hover:opacity-95 active:scale-98 cursor-pointer"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <QrCode className="w-5 h-5" />
+              <span>Mostrar Código QR al Mozo / Caja</span>
+            </button>
 
             {/* Rewards Catalog */}
             <div className="pt-2">
               <CustomerRewardsCatalog
                 rewardsProgress={cardData.rewards_progress}
-                onOpenQr={() => setIsQrModalOpen(true)}
+                onOpenQr={(reward) => {
+                  setSelectedRewardForQr(reward || null);
+                  setIsQrModalOpen(true);
+                }}
               />
             </div>
 
@@ -700,6 +738,21 @@ export default function RestaurantCustomerPortalPage() {
                 GastroBumeran Loyalty OS • Programa de fidelización gastronómica
               </p>
             </div>
+
+            {/* Dynamic QR Modal */}
+            <DynamicQrModal
+              isOpen={isQrModalOpen}
+              onClose={() => {
+                setIsQrModalOpen(false);
+                setSelectedRewardForQr(null);
+              }}
+              qrPayload={cardData.qr_payload}
+              customerName={cardData.customer.name}
+              documentNumber={cardData.customer.document_number}
+              pointsBalance={cardData.customer.points_balance}
+              selectedReward={selectedRewardForQr}
+              onClearSelectedReward={() => setSelectedRewardForQr(null)}
+            />
           </div>
         )}
       </main>
@@ -759,17 +812,6 @@ export default function RestaurantCustomerPortalPage() {
         </div>
       )}
 
-      {/* DYNAMIC QR MODAL */}
-      {cardData && (
-        <DynamicQrModal
-          isOpen={isQrModalOpen}
-          onClose={() => setIsQrModalOpen(false)}
-          qrPayload={cardData.qr_payload}
-          customerName={cardData.customer.name}
-          documentNumber={cardData.customer.document_number}
-          pointsBalance={cardData.customer.points_balance}
-        />
-      )}
     </div>
   );
 }
