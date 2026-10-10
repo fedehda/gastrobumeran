@@ -109,6 +109,7 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
             </label>
             <input
               type="text"
+              inputMode="numeric"
               required
               autoFocus
               value={doc}
@@ -153,7 +154,8 @@ function NewCustomerForm({ onClose, onCustomerCreated, initialQuery }: NewCustom
                 Teléfono / WhatsApp (Opcional)
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+54 9 11 ..."

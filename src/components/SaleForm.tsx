@@ -205,6 +205,7 @@ export function SaleForm({ customer, settings, onSaleSuccess }: SaleFormProps) {
                 type="number"
                 step="0.01"
                 min="1"
+                inputMode="decimal"
                 value={amountStr}
                 onChange={(e) => setAmountStr(e.target.value)}
                 placeholder="0.00"

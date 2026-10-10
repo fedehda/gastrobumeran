@@ -66,6 +66,7 @@ export function PortalLoginPrompt({
               <input
                 id="dni-input"
                 type="text"
+                inputMode="numeric"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ej: 30123456"
