@@ -33,15 +33,33 @@ if not exist ".env.local" goto create_env
 if not exist "node_modules\" goto install_deps
 :after_deps
 
+:: 6. Detectar IP local para acceso desde celulares en la red Wi-Fi
+set "LOCAL_IP="
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
+    if not defined LOCAL_IP (
+        for /f "tokens=1" %%b in ("%%a") do set "LOCAL_IP=%%b"
+    )
+)
+if not defined LOCAL_IP set "LOCAL_IP=127.0.0.1"
+
 echo ==============================================================================
-echo   Iniciando GastroBumeran en: http://localhost:3000
+echo   Iniciando GastroBumeran (Escuchando en toda la red local)
 echo.
-echo   * Punto de Cobro & Caja POS: http://localhost:3000
-echo   * Portal del Comensal PWA:   http://localhost:3000/portal
-echo   * Auto-Sync Fudo POS:        Daemon activo en segundo plano
-echo   * Credenciales Demo Admin:   admin@gastrobumeran.com / admin123 (PIN: 1234)
+echo   * Acceso en esta PC (Caja central):
+echo     http://localhost:3000
 echo.
-echo   Abriendo tu navegador web predeterminado...
+echo   * Acceso desde Celulares / Mozos en la misma red Wi-Fi:
+echo     http://gastrobumeran.local:3000
+echo     http://%LOCAL_IP%:3000
+echo.
+echo   * Terminal Movil de Mozos ^& Canjes:
+echo     http://gastrobumeran.local:3000/caja
+echo     http://%LOCAL_IP%:3000/caja
+echo.
+echo   * Portal del Comensal PWA:
+echo     http://gastrobumeran.local:3000/portal
+echo.
+echo   * Credenciales Demo: admin@gastrobumeran.com / admin123 (PIN: 1234)
 echo ==============================================================================
 echo.
 echo Presiona Ctrl + C en esta ventana cuando desees detener el servidor.
