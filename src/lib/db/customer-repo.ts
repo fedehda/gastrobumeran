@@ -467,8 +467,26 @@ export function getCustomerPortalData(
 ): CustomerPortalCard | null {
   if (!identifier) return null;
 
-  // Clean identifier in case it comes with QR prefix or spaces
+  // Clean identifier in case it comes with QR prefix, URLs or spaces
   let clean = identifier.trim();
+
+  // If payload is a full URL (e.g. https://domain.com/portal?dni=12345678 or /r/slug?dni=...)
+  if (clean.includes("http://") || clean.includes("https://") || clean.startsWith("/")) {
+    try {
+      const parsedUrl = new URL(clean, "https://gastrobumeran.local");
+      const urlDni = parsedUrl.searchParams.get("dni") || parsedUrl.searchParams.get("id") || parsedUrl.searchParams.get("query");
+      if (urlDni) {
+        clean = urlDni.trim();
+      }
+    } catch {
+      // Fallback regex matching ?dni=... or &dni=...
+      const match = clean.match(/[?&]dni=([^&#]+)/i);
+      if (match && match[1]) {
+        clean = decodeURIComponent(match[1]).trim();
+      }
+    }
+  }
+
   if (clean.startsWith("GASTRO:")) {
     // If format is GASTRO:<slug>:DNI:<dni> or GASTRO:DNI:<dni>
     const parts = clean.split(":");

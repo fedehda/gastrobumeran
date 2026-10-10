@@ -4,7 +4,9 @@ import { requireSession } from "@/lib/auth/require-session";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireSession(req, { allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR"] });
+    const session = await requireSession(req, {
+      allowedRoles: ["ADMIN", "PLATFORM_ADMIN", "OPERATOR", "CASHIER", "OWNER", "SUPERVISOR"],
+    });
     if (!session.success) return session.response;
     const { restaurantId } = session;
 
