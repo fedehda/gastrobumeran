@@ -8,6 +8,7 @@
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "reset-test-data": "tsx src/scripts/reset-test-data.ts",
+    "seed:demo": "tsx src/scripts/seed-clean-portfolio-demo.ts",
     "worker": "tsx src/scripts/fudo-cron-worker.ts",
     "listener": "tsx src/scripts/pos-realtime-listener.ts"
   },
